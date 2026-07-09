@@ -12,31 +12,29 @@ body {
 }
 
 /* 2. Kustomisasi Scrollbar untuk Tabel Data / Kontainer yang Panjang */
-/* Standar Modern (Firefox) */
 .custom-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 #f1f5f9; /* thumb track */
+    scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
-/* Standar WebKit (Chrome, Safari, Edge, Opera) */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f5f9; /* Slate-100 */
+    background: #f1f5f9;
     border-radius: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1; /* Slate-300 */
+    background: #cbd5e1;
     border-radius: 8px;
     transition: background 0.2s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8; /* Slate-400 */
+    background: #94a3b8;
 }
 
 /* 3. Reset & Percantikan Tampilan Input Date (Sangat Berguna di riwayat.html) */
@@ -48,34 +46,38 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* 4. Efek Animasi Kustom untuk Status IoT Real-time */
 
-/* Mengganti/Menimpa animasi default Tailwind agar memiliki efek pendaran cahaya (Glowing Pulse) */
-@keyframes custom-pulse {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); /* Efek glow hijau */
-    }
-    50% {
-        transform: scale(1.12);
-        box-shadow: 0 0 10px 4px rgba(16, 185, 129, 0.2);
-    }
+/* Animasi skala dasar agar bisa dipakai silang warna */
+@keyframes pulse-scale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
 }
 
-/* Implementasi kelas pendaran kustom pada elemen indikator yang aktif (misal: Connected / Relay Hidup) */
-.animate-pulse-glowing {
-    animation: custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Efek Glow Hijau (Connected / Aktuator Aktif) */
+@keyframes glow-emerald {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    50% { box-shadow: 0 0 10px 4px rgba(16, 185, 129, 0.2); }
+}
+
+/* Efek Glow Merah (Disconnected / Safety Alert Level Air) */
+@keyframes glow-rose {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4); }
+    50% { box-shadow: 0 0 10px 4px rgba(244, 63, 94, 0.2); }
+}
+
+/* Implementasi Kelas Gabungan */
+.animate-pulse-emerald {
+    animation: pulse-scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite, glow-emerald 2s infinite;
+}
+
+.animate-pulse-rose {
+    animation: pulse-scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite, glow-rose 2s infinite;
 }
 
 /* Animasi untuk Efek Aliran Cairan / Loading Statis */
 @keyframes fluid-flow {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
-    }
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .bg-fluid-flow {
@@ -88,8 +90,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .truncate-2-lines {
     display: -webkit-box;
     -webkit-box-orient: vertical;  
-    -webkit-line-clamp: 2; /* Browser berbasis WebKit (Chrome, Safari, Edge kustom) */
-    line-clamp: 2;         /* Properti Standar Modern */
+    -webkit-line-clamp: 2;
+    line-clamp: 2;        
     overflow: hidden;
 }
 
@@ -104,12 +106,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         top: 0;
         left: 0;
         height: 100vh !important;
-        width: 256px; /* Menyesuaikan w-64 milik Tailwind */
-        overflow-y: auto; /* Agar menu bisa di-scroll jika layar laptop pendek */
+        width: 256px; /* Menyesuaikan w-64 Tailwind */
+        overflow-y: auto;
         z-index: 50;
     }
     
-    /* Memberikan jarak di sisi kiri konten utama agar tidak tertutup sidebar yang di-fixed */
     main, .main-content {
         margin-left: 256px !important;
     }
@@ -120,14 +121,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     aside, .sidebar {
         position: fixed !important;
         top: 0;
-        left: -100% !important; /* Tersembunyi di kiri layar secara default */
+        left: -100% !important;
         height: 100vh !important;
         width: 250px;
         z-index: 100;
-        transition: left 0.3s ease-in-out; /* Animasi bergeser lancar saat dibuka */
+        transition: left 0.3s ease-in-out;
     }
 
-    /* Kelas aktif yang akan dipicu oleh JavaScript saat tombol garis 3 diklik */
     aside.sidebar-active, .sidebar.sidebar-active {
         left: 0 !important;
     }

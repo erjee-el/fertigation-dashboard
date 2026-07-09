@@ -83,40 +83,47 @@ document.addEventListener("DOMContentLoaded", function () {
     function initMobileMenu() {
         const menuToggleBtn = document.getElementById("menu-toggle");
 
+        // RESET STATE: Setiap kali halaman baru terbuka, pastikan sidebar dalam kondisi tertutup
+        if (sidebarContainer) {
+            sidebarContainer.classList.remove("sidebar-active");
+        }
+
         if (menuToggleBtn && sidebarContainer) {
-            // Kloning tombol untuk membersihkan sisa event listener ganda yang menempel saat pindah halaman
+            // Gandakan tombol untuk menghapus event listener lama yang tersisa di memori browser
             const newToggleBtn = menuToggleBtn.cloneNode(true);
             menuToggleBtn.replaceWith(newToggleBtn);
 
             newToggleBtn.addEventListener("click", function (event) {
                 event.preventDefault();
-                event.stopPropagation(); // Mencegah event menutup otomatis terpicu instan
+                event.stopPropagation(); // Amankan agar tidak terpicu menutup instan
                 sidebarContainer.classList.toggle("sidebar-active");
             });
         }
 
-        // Otomatis menutup sidebar jika salah satu link menu di dalam sidebar diklik
+        // Hanya tutup sidebar mobile saat link diklik pada mode mobile (< 1024px)
         if (sidebarContainer) {
-            const sidebarLinks = sidebarContainer.querySelectorAll("a");
+            const sidebarLinks = sidebarContainer.querySelectorAll(".nav-link");
             sidebarLinks.forEach(link => {
                 link.addEventListener("click", () => {
-                    sidebarContainer.classList.remove("sidebar-active");
+                    if (window.innerWidth < 1024) {
+                        sidebarContainer.classList.remove("sidebar-active");
+                    }
                 });
             });
         }
 
-        // Menutup sidebar otomatis jika user mengklik area bebas di luar dokumen sidebar
+        // Deteksi klik di luar sidebar untuk menutup otomatis
         document.addEventListener("click", function (event) {
             const btn = document.getElementById("menu-toggle");
             if (sidebarContainer && sidebarContainer.classList.contains("sidebar-active")) {
-                // Pastikan yang diklik bukan bagian dalam sidebar DAN bukan tombol garis tiganya
+                // Pastikan klik terjadi di luar area sidebar dan bukan pada tombol garis tiga itu sendiri
                 if (!sidebarContainer.contains(event.target) && btn && !btn.contains(event.target)) {
                     sidebarContainer.classList.remove("sidebar-active");
                 }
             }
         });
     }
-});
+}); // <-- PERBAIKAN KRITIS: Kurung kurawal penutup DOMContentLoaded diletakkan di sini!
 
 // ==========================================================================
 // 5. GLOBAL HANDLER: PARSE INCOMING DATA (Data Sensor Real-time)

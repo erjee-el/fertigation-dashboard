@@ -1,6 +1,6 @@
 /**
  * ==========================================================================
- * MAIN.JS - DASHBOARD UI LOGIC & REAL-TIME DATA ROUTER
+ * MAIN.JS - DASHBOARD UI LOGIC & REAL-TIME DATA ROUTER (FIXED)
  * Sistem Monitoring Smart Fertigation - Cabai
  * Handlers: Dynamic Sidebar, Navigation Highlighter, Mobile Menu, & UI Parsers
  * ==========================================================================
@@ -55,13 +55,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ==========================================
-    // 3. MENU TOGGLE MOBILE (EVENT DELEGATION)
+    // 3. MENU TOGGLE MOBILE (EVENT DELEGATION FIXED)
     // ==========================================
     document.addEventListener("click", function (event) {
-        if (event.target.closest("#menu-toggle")) {
+        // Mendeteksi klik pada tombol hamburger menu (garis tiga)
+        if (event.target.closest("#menu-toggle") || event.target.closest(".hamburger-btn")) {
             if (sidebarContainer) {
-                sidebarContainer.classList.toggle("hidden");
-                sidebarContainer.classList.add("fixed", "left-0", "top-0", "h-full", "z-50");
+                // Gunakan toggle class kustom yang selaras dengan style.css (Langkah 1 sebelumnya)
+                sidebarContainer.classList.toggle("sidebar-active");
+            }
+        }
+        
+        // Fitur Tambahan: Menutup sidebar otomatis jika user mengklik area di luar sidebar saat mode mobile aktif
+        if (!event.target.closest("#sidebar") && !event.target.closest("#menu-toggle") && !event.target.closest(".hamburger-btn")) {
+            if (sidebarContainer && sidebarContainer.classList.contains("sidebar-active")) {
+                sidebarContainer.classList.remove("sidebar-active");
             }
         }
     });
@@ -147,7 +155,7 @@ window.updateActuatorPanel = function (payload) {
 };
 
 /**
- * Mengubah warna dan teks indikator broker MQTT di bagian bawah sidebar (Sinkron dengan style.css kustom).
+ * Mengubah warna dan teks indikator broker MQTT di bagian bawah sidebar (FIXED)
  * @param {boolean} isConnected - Status koneksi MQTT (true/false)
  */
 window.updateStatusBadge = function (isConnected) {
@@ -155,10 +163,10 @@ window.updateStatusBadge = function (isConnected) {
     if (!badge) return;
 
     if (isConnected) {
-        badge.className = "flex items-center gap-1.5 text-emerald-400 font-medium";
+        badge.className = "flex items-center gap-1.5 text-emerald-400 font-medium transition-all duration-300";
         badge.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse-glowing"></span> Connected (Live)`;
     } else {
-        badge.className = "flex items-center gap-1.5 text-rose-500 font-medium";
+        badge.className = "flex items-center gap-1.5 text-rose-500 font-medium transition-all duration-300";
         badge.innerHTML = `<span class="h-2 w-2 rounded-full bg-rose-500"></span> Disconnected`;
     }
 };

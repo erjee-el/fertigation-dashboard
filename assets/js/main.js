@@ -1,6 +1,6 @@
 /**
  * ==========================================================================
- * MAIN.JS - DASHBOARD UI LOGIC & REAL-TIME DATA ROUTER (FIXED)
+ * MAIN.JS - DASHBOARD UI LOGIC & REAL-TIME DATA ROUTER (FULLY ALIGNED)
  * Sistem Monitoring Smart Fertigation - Cabai
  * Handlers: Dynamic Sidebar, Navigation Highlighter, Mobile Menu, & UI Parsers
  * ==========================================================================
@@ -55,18 +55,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ==========================================
-    // 3. MENU TOGGLE MOBILE (EVENT DELEGATION FIXED)
+    // 3. MENU TOGGLE MOBILE (EVENT DELEGATION)
     // ==========================================
     document.addEventListener("click", function (event) {
-        // Mendeteksi klik pada tombol hamburger menu (garis tiga)
         if (event.target.closest("#menu-toggle") || event.target.closest(".hamburger-btn")) {
             if (sidebarContainer) {
-                // Gunakan toggle class kustom yang selaras dengan style.css (Langkah 1 sebelumnya)
                 sidebarContainer.classList.toggle("sidebar-active");
             }
         }
         
-        // Fitur Tambahan: Menutup sidebar otomatis jika user mengklik area di luar sidebar saat mode mobile aktif
+        // Menutup sidebar otomatis jika user mengklik area di luar sidebar
         if (!event.target.closest("#sidebar") && !event.target.closest("#menu-toggle") && !event.target.closest(".hamburger-btn")) {
             if (sidebarContainer && sidebarContainer.classList.contains("sidebar-active")) {
                 sidebarContainer.classList.remove("sidebar-active");
@@ -76,7 +74,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // ==========================================================================
-// 4. GLOBAL HANDLER: PARSE INCOMING DATA (Dipanggil dari connection.js)
+// 4. GLOBAL HANDLER: PARSE INCOMING DATA (Diselaraskan dengan ID index.html)
 // ==========================================================================
 
 /**
@@ -87,23 +85,38 @@ window.parseIncomingJSON = function (payload) {
     if (!payload) return;
 
     try {
-        // Pembaruan teks nilai Sensor pH digital
+        // 1. Pembaruan teks nilai Sensor pH digital (ID: val-ph)
         if (payload.ph !== undefined && payload.ph !== null) {
-            const phEl = document.getElementById('current-ph');
+            const phEl = document.getElementById('val-ph');
             if (phEl) phEl.innerText = parseFloat(payload.ph).toFixed(2);
         }
 
-        // Pembaruan teks nilai Sensor TDS Nutrisi (PPM)
+        // 2. Pembaruan teks nilai Sensor TDS Nutrisi (ID: val-tds)
         if (payload.tds !== undefined && payload.tds !== null) {
-            const tdsEl = document.getElementById('current-tds');
-            if (tdsEl) tdsEl.innerText = `${parseInt(payload.tds)} PPM`;
+            const tdsEl = document.getElementById('val-tds');
+            if (tdsEl) tdsEl.innerText = parseInt(payload.tds);
         }
 
-        // Pembaruan cap waktu pembaruan terakhir (Last Update Info Element)
+        // 3. Pembaruan cap waktu pembaruan terakhir (ID: last-update-time)
         const timeEl = document.getElementById('last-update-time');
         if (timeEl) {
             const now = new Date();
-            timeEl.innerText = `Update terakhir: ${now.toLocaleTimeString('id-ID')}`;
+            timeEl.innerText = now.toTimeString().split(' ')[0];
+        }
+
+        // 4. Meneruskan data ke fungsi bawaan lokal di index.html (untuk update badge status, level air, dan grafik)
+        // Ini mendeteksi jika fungsi-fungsi di tag <script> index.html Anda tersedia
+        if (typeof updateBadgeStatus === "function") {
+            updateBadgeStatus('ph', payload.ph, payload.ph <= 4.5, payload.ph >= 7.5);
+            updateBadgeStatus('tds', payload.tds, payload.tds <= 1400, payload.tds >= 1800);
+        }
+        
+        if (typeof calculateFuzzyMemberships === "function") {
+            calculateFuzzyMemberships(payload);
+        }
+
+        if (window.updateDashboardChart) {
+            window.updateDashboardChart(payload.ph, payload.tds);
         }
 
     } catch (error) {
@@ -118,44 +131,40 @@ window.parseIncomingJSON = function (payload) {
 window.updateActuatorPanel = function (payload) {
     if (!payload) return;
 
-    // Pemetaan ID elemen HTML indikator lingkaran bulatan beserta warna aktifnya
-    const relays = [
-        { id: 'relay1-status', value: payload.relay_ph_up, activeClass: 'bg-emerald-500' },
-        { id: 'relay2-status', value: payload.relay_ph_down, activeClass: 'bg-rose-500' },
-        { id: 'relay3-status', value: payload.relay_nutrisi_a, activeClass: 'bg-sky-500' },
-        { id: 'relay4-status', value: payload.relay_nutrisi_b, activeClass: 'bg-sky-500' }
-    ];
+    // Pemetaan ID sesuai dengan struktur fungsi updateRelayUI bawaan index.html Anda
+    // Mencocokkan property incoming MQTT ke variabel lokal index.html
+    if (typeof updateRelayUI === "function") {
+        if (payload.relay_ph_up !== undefined) updateRelayUI('phup', parseInt(payload.relay_ph_up) === 1);
+        if (payload.relay_ph_down !== undefined) updateRelayUI('phdown', parseInt(payload.relay_ph_down) === 1);
+        if (payload.relay_nutrisi_a !== undefined) updateRelayUI('nut1', parseInt(payload.relay_nutrisi_a) === 1);
+        if (payload.relay_nutrisi_b !== undefined) updateRelayUI('nut2', parseInt(payload.relay_nutrisi_b) === 1);
+    }
 
-    // Iterasi eksekusi manipulasi warna status bulatan relay
-    relays.forEach(relay => {
-        const element = document.getElementById(relay.id);
-        if (element && relay.value !== undefined && relay.value !== null) {
-            const state = parseInt(relay.value);
-            if (state === 1) {
-                element.className = `w-3.5 h-3.5 rounded-full shadow-inner transition-all duration-300 animate-pulse-glowing ${relay.activeClass}`;
-            } else {
-                element.className = "w-3.5 h-3.5 rounded-full bg-slate-300 shadow-inner border border-slate-400/20 transition-all duration-300";
-            }
-        }
-    });
-
-    // Pembaruan bar kemajuan (progress bar) PWM Pompa Utama dari Fuzzy Logic
+    // Pembaruan bar kemajuan (progress bar) PWM Pompa Utama (ID: val-pwm & bar-pwm)
     if (payload.pwm !== undefined && payload.pwm !== null) {
-        const pwmText = document.getElementById('pwm-text-value');
-        const pwmBar = document.getElementById('pwm-progress-bar');
+        const pwmText = document.getElementById('val-pwm');
+        const pwmBar = document.getElementById('bar-pwm');
+        const pwmStatusText = document.getElementById('txt-pwm-status');
         
         if (pwmText && pwmBar) {
             const safePwm = Math.min(Math.max(parseInt(payload.pwm), 0), 255);
             const percentage = Math.round((safePwm / 255) * 100);
 
-            pwmText.innerText = `${safePwm} / 255`;
+            pwmText.innerText = safePwm;
             pwmBar.style.width = `${percentage}%`;
+
+            if (pwmStatusText) {
+                if (safePwm === 0) pwmStatusText.innerText = "MATI";
+                else if (safePwm <= 120) pwmStatusText.innerText = "LAMBAT";
+                else if (safePwm <= 180) pwmStatusText.innerText = "SEDANG";
+                else pwmStatusText.innerText = "CEPAT";
+            }
         }
     }
 };
 
 /**
- * Mengubah warna dan teks indikator broker MQTT di bagian bawah sidebar (FIXED)
+ * Mengubah warna dan teks indikator broker MQTT di bagian bawah sidebar
  * @param {boolean} isConnected - Status koneksi MQTT (true/false)
  */
 window.updateStatusBadge = function (isConnected) {
@@ -164,7 +173,7 @@ window.updateStatusBadge = function (isConnected) {
 
     if (isConnected) {
         badge.className = "flex items-center gap-1.5 text-emerald-400 font-medium transition-all duration-300";
-        badge.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse-glowing"></span> Connected (Live)`;
+        badge.innerHTML = `<span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span> Connected (Live)`;
     } else {
         badge.className = "flex items-center gap-1.5 text-rose-500 font-medium transition-all duration-300";
         badge.innerHTML = `<span class="h-2 w-2 rounded-full bg-rose-500"></span> Disconnected`;

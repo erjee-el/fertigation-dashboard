@@ -96,7 +96,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ==========================================================================
-   6. RESPONSIVE SIDEBAR NAVIGATION CONFIGURATION
+   6. RESPONSIVE SIDEBAR NAVIGATION CONFIGURATION (FIXED CLIPPING)
    ========================================================================== */
 
 /* Pengaturan untuk Desktop (Laptop / Layar Lebar) */
@@ -109,6 +109,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         width: 256px; /* Menyesuaikan w-64 Tailwind */
         overflow-y: auto;
         z-index: 50;
+        visibility: visible !important;
     }
     
     main, .main-content {
@@ -121,14 +122,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     aside, .sidebar {
         position: fixed !important;
         top: 0;
-        left: -100% !important;
+        left: -260px !important; /* Sembunyikan pas di luar lebar sidebar */
         height: 100vh !important;
         width: 250px;
         z-index: 100;
-        transition: left 0.3s ease-in-out;
+        visibility: hidden; /* BARU: Amputasi penuh area klik saat sembunyi agar tidak memblokir tombol */
+        transition: left 0.3s ease-in-out, visibility 0.3s ease-in-out;
     }
 
+    /* Ketika sidebar aktif (terbuka di mobile) */
     aside.sidebar-active, .sidebar.sidebar-active {
         left: 0 !important;
+        visibility: visible !important; /* Munculkan kembali struktur visual dan area klik */
     }
+}
+
+/* 7. UTILITY TAMBAHAN UNTUK TOMBOL GARIS TIGA (OVERRIDE SAFETY) */
+#menu-toggle {
+    z-index: 150 !important; /* Wajib di atas z-index sidebar (100) agar tidak tertimbun */
+    cursor: pointer;
 }

@@ -139,6 +139,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* 7. UTILITY TAMBAHAN UNTUK TOMBOL GARIS TIGA (OVERRIDE SAFETY) */
 #menu-toggle {
-    z-index: 150 !important; /* Wajib di atas z-index sidebar (100) agar tidak tertimbun */
-    cursor: pointer;
+    z-index: 1000 !important; 
+    position: relative; /* Pastikan ini ada jika z-index tidak berfungsi */
 }

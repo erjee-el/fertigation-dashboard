@@ -82,49 +82,36 @@ document.addEventListener("DOMContentLoaded", function () {
     // ==========================================
     function initMobileMenu() {
         const menuToggleBtn = document.getElementById("menu-toggle");
+        const sidebar = document.getElementById("sidebar");
 
-        // RESET STATE: Setiap kali halaman baru terbuka, pastikan sidebar dalam kondisi tertutup
-        if (sidebarContainer) {
-            sidebarContainer.classList.remove("sidebar-active");
-        }
+        if (!menuToggleBtn || !sidebar) return;
 
-        if (menuToggleBtn && sidebarContainer) {
-            // Gandakan tombol untuk menghapus event listener lama yang tersisa di memori browser
-            const newToggleBtn = menuToggleBtn.cloneNode(true);
-            menuToggleBtn.replaceWith(newToggleBtn);
+        // Hapus logika cloneNode dan replaceWith. Cukup gunakan satu event listener.
+         menuToggleBtn.addEventListener("click", function (event) {
+            event.stopPropagation(); // Mencegah event "bocor" ke document
+            sidebar.classList.toggle("sidebar-active");
+        });
 
-            newToggleBtn.addEventListener("click", function (event) {
-                event.preventDefault();
-                event.stopPropagation(); // Amankan agar tidak terpicu menutup instan
-                sidebarContainer.classList.toggle("sidebar-active");
-            });
-        }
-
-        // Hanya tutup sidebar mobile saat link diklik pada mode mobile (< 1024px)
-        if (sidebarContainer) {
-            const sidebarLinks = sidebarContainer.querySelectorAll(".nav-link");
-            sidebarLinks.forEach(link => {
-                link.addEventListener("click", () => {
-                    if (window.innerWidth < 1024) {
-                        sidebarContainer.classList.remove("sidebar-active");
-                    }
-                });
-            });
-        }
-
-        // Deteksi klik di luar sidebar untuk menutup otomatis
+        // Menutup sidebar jika klik terjadi di area konten (luar sidebar)
         document.addEventListener("click", function (event) {
-            const btn = document.getElementById("menu-toggle");
-            if (sidebarContainer && sidebarContainer.classList.contains("sidebar-active")) {
-                // Pastikan klik terjadi di luar area sidebar dan bukan pada tombol garis tiga itu sendiri
-                if (!sidebarContainer.contains(event.target) && btn && !btn.contains(event.target)) {
-                    sidebarContainer.classList.remove("sidebar-active");
+            // Cek apakah yang diklik BUKAN sidebar dan BUKAN tombol menu
+            if (!sidebar.contains(event.target) && !menuToggleBtn.contains(event.target)) {
+              if (sidebar.classList.contains("sidebar-active")) {
+                     sidebar.classList.remove("sidebar-active");
                 }
             }
         });
-    }
-}); // <-- PERBAIKAN KRITIS: Kurung kurawal penutup DOMContentLoaded diletakkan di sini!
 
+        // Opsional: Tutup sidebar jika salah satu link navigasi diklik
+        const sidebarLinks = sidebar.querySelectorAll("a");
+        sidebarLinks.forEach(link => {
+            link.addEventListener("click", () => {
+                sidebar.classList.remove("sidebar-active");
+            });
+        });
+    }
+
+});        
 // ==========================================================================
 // 5. GLOBAL HANDLER: PARSE INCOMING DATA (Data Sensor Real-time)
 // ==========================================================================

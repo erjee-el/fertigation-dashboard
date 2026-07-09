@@ -1,0 +1,94 @@
+/* ==========================================================================
+   STYLE.CSS - SMART FERTIGATION UTILITY & CUSTOM ANIMATIONS
+   Digunakan sebagai pelengkap utilitas Tailwind CSS (Dashboard IoT)
+   ========================================================================== */
+
+/* 1. Pengaturan Dasar & Optimasi Rendering Teks */
+body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+/* 2. Kustomisasi Scrollbar untuk Tabel Data / Kontainer yang Panjang */
+/* Standar Modern (Firefox) */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9; /* thumb track */
+}
+
+/* Standar WebKit (Chrome, Safari, Edge, Opera) */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9; /* Slate-100 */
+    border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1; /* Slate-300 */
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* Slate-400 */
+}
+
+/* 3. Reset & Percantikan Tampilan Input Date (Sangat Berguna di riwayat.html) */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%2364748b" class="bi bi-calendar-event" viewBox="0 0 16 16"><path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>');
+    cursor: pointer;
+    padding: 2px;
+}
+
+/* 4. Efek Animasi Kustom untuk Status IoT Real-time */
+
+/* Mengganti/Menimpa animasi default Tailwind agar memiliki efek pendaran cahaya (Glowing Pulse) */
+@keyframes custom-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); /* Efek glow hijau */
+    }
+    50% {
+        transform: scale(1.12);
+        box-shadow: 0 0 10px 4px rgba(16, 185, 129, 0.2);
+    }
+}
+
+/* Implementasi kelas pendaran kustom pada elemen indikator yang aktif (misal: Connected / Relay Hidup) */
+.animate-pulse-glowing {
+    animation: custom-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Animasi untuk Efek Aliran Cairan / Loading Statis */
+@keyframes fluid-flow {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.bg-fluid-flow {
+    background: linear-gradient(-45deg, #10b981, #059669, #3b82f6, #2563eb);
+    background-size: 400% 400%;
+    animation: fluid-flow 8s ease infinite;
+}
+
+/* 5. Utility Class Tambahan (Mencegah Teks Pecah Saat Transisi Layout) */
+.truncate-2-lines {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;  
+    -webkit-line-clamp: 2; /* Browser berbasis WebKit (Chrome, Safari, Edge kustom) */
+    line-clamp: 2;         /* Properti Standar Modern */
+    overflow: hidden;
+}

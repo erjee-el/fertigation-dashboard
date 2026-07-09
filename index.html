@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Fertigation Dashboard</title>
+    
+    <!-- 1. Optimasi Koneksi Font (Preconnect) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- 2. Stylesheets & Fonts (Dimuat Duluan Agar Tampilan Tidak Pecah Saat Loading) -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    
+    <!-- 3. Tailwind CSS CDN Core -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 4. Library Script JavaScript Eksternal (Menggunakan 'defer' Agar Non-Blocking) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    
+    <!-- 5. Kustomisasi CSS Internal Per-Halaman -->
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        
+        .metric-card {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                        box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 
+                        0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <div class="min-h-screen flex">
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between hidden md:flex fixed h-full z-50 md:relative">
+            <div>
+                <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+                    <div class="bg-emerald-500 text-slate-900 p-2 rounded-xl">
+                        <i class="fa-solid fa-seedling text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-white font-bold text-sm tracking-wide uppercase">Smart Fertigation</h1>
+                        <span class="text-xs text-slate-500 font-medium">Arduino Nano & Fuzzy</span>
+                    </div>
+                </div>
+
+                <!-- NAVIGASI -->
+                <nav class="p-4 space-y-1">
+                    <a href="index.html" class="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-xl font-medium text-sm">
+                        <i class="fa-solid fa-chart-pie"></i> Dashboard
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+                        <i class="fa-solid fa-sliders"></i> Kontrol Manual
+                    </a>
+                    <a href="kalibrasi.html" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+                        <i class="fa-solid fa-gears"></i> Kalibrasi Sensor
+                    </a>
+                    <a href="riwayat.html" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+                        <i class="fa-solid fa-clock-history"></i> Riwayat Data
+                    </a>
+                </nav>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+                <span>Status MQTT:</span>
+                <span id="mqtt-status-badge" class="flex items-center gap-1.5 text-amber-400 font-medium">
+                    <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting
+                </span>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+            <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <button id="menu-toggle" class="md:hidden text-slate-600 hover:text-slate-900">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900">Sistem Monitoring & Fertigasi</h2>
+                        <p class="text-xs text-slate-500">Pemantauan real-time</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div id="safety-indicator" class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved"></i> Sistem Aman
+                    </div>
+                    <div class="text-right hidden sm:block">
+                        <p class="text-xs text-slate-400 font-medium">Terakhir Diperbarui</p>
+                        <p class="text-sm font-semibold text-slate-700" id="last-update-time">--:--:--</p>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-6 space-y-6 max-w-[1600px] w-full mx-auto">
+                
+                <!-- Safety Alert Banner -->
+                <div id="safety-alert-banner" class="hidden bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-4 text-rose-800 animate-pulse">
+                    <div class="bg-rose-500 text-white p-2 rounded-xl mt-0.5">
+                        <i class="fa-solid fa-circle-exclamation text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-rose-900">SISTEM BERHENTI DARURAT (SAFETY MODE)</h4>
+                        <p class="text-sm text-rose-700 mt-0.5">Level air terdeteksi <strong>RENDAH (LOW)</strong>. Seluruh relai dosing pump dan pompa utama otomatis dimatikan demi keamanan hardware.</p>
+                    </div>
+                </div>
+
+                <!-- Metric Cards Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- pH -->
+                    <div class="metric-card bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between">
+                        <div class="space-y-2">
+                            <span class="text-sm font-semibold text-slate-400 tracking-wide uppercase">Derajat Keasaman</span>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-3xl font-bold text-slate-900" id="val-ph">0.00</span>
+                            </div>
+                            <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" id="status-ph">
+                                Memuat...
+                            </span>
+                        </div>
+                        <div class="bg-indigo-50 text-indigo-600 h-14 w-14 rounded-2xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-flask"></i>
+                        </div>
+                    </div>
+
+                    <!-- TDS -->
+                    <div class="metric-card bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between">
+                        <div class="space-y-2">
+                            <span class="text-sm font-semibold text-slate-400 tracking-wide uppercase">Kepekatan Nutrisi</span>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-3xl font-bold text-slate-900" id="val-tds">0</span>
+                                <span class="text-sm font-medium text-slate-500">PPM</span>
+                            </div>
+                            <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" id="status-tds">
+                                Memuat...
+                            </span>
+                        </div>
+                        <div class="bg-sky-50 text-sky-600 h-14 w-14 rounded-2xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-droplet"></i>
+                        </div>
+                    </div>
+
+                    <!-- Suhu -->
+                    <div class="metric-card bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between">
+                        <div class="space-y-2">
+                            <span class="text-sm font-semibold text-slate-400 tracking-wide uppercase">Suhu Larutan</span>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-3xl font-bold text-slate-900" id="val-temp">0.0</span>
+                                <span class="text-sm font-medium text-slate-500">°C</span>
+                            </div>
+                            <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" id="status-temp">
+                                Memuat...
+                            </span>
+                        </div>
+                        <div class="bg-amber-50 text-amber-600 h-14 w-14 rounded-2xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-temperature-half"></i>
+                        </div>
+                    </div>
+
+                    <!-- Tekanan -->
+                    <div class="metric-card bg-white p-5 rounded-2xl border border-slate-200 flex items-center justify-between">
+                        <div class="space-y-2">
+                            <span class="text-sm font-semibold text-slate-400 tracking-wide uppercase">Tekanan Pipa</span>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-3xl font-bold text-slate-900" id="val-pressure">0.00</span>
+                                <span class="text-sm font-medium text-slate-500">Bar</span>
+                            </div>
+                            <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600" id="status-pressure">
+                                Memuat...
+                            </span>
+                        </div>
+                        <div class="bg-purple-50 text-purple-600 h-14 w-14 rounded-2xl flex items-center justify-center text-xl">
+                            <i class="fa-solid fa-gauge"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Grafik & Fuzzy Area -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Grafik Tren Real-Time</h3>
+                                    <p class="text-xs text-slate-500">Pergerakan pH Larutan & Nutrisi (TDS)</p>
+                                </div>
+                                <div class="flex items-center gap-3 text-xs font-semibold">
+                                    <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-indigo-500"></span> pH</span>
+                                    <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-sky-500"></span> TDS (PPM)</span>
+                                </div>
+                            </div>
+                            <!-- Canvas untuk Render dari app-chart.js -->
+                            <div class="h-64 bg-slate-50 rounded-xl border border-slate-100 p-2 relative">
+                                <canvas id="realtimeChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Fuzzy Membership -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                            <h3 class="text-base font-bold text-slate-900 mb-4"><i class="fa-solid fa-calculator text-emerald-500 mr-2"></i>Fuzzy Membership Degree (μ)</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                <div class="bg-slate-50 p-4 rounded-xl space-y-2">
+                                    <span class="font-bold text-slate-700 block border-b border-slate-200 pb-1">Fuzzy pH</span>
+                                    <div class="flex justify-between"><span>μ pH LOW:</span> <span class="font-mono font-bold" id="f-ph-low">0.00</span></div>
+                                    <div class="flex justify-between"><span>μ pH MID:</span> <span class="font-mono font-bold" id="f-ph-mid">0.00</span></div>
+                                    <div class="flex justify-between"><span>μ pH HIGH:</span> <span class="font-mono font-bold" id="f-ph-high">0.00</span></div>
+                                </div>
+                                <div class="bg-slate-50 p-4 rounded-xl space-y-2">
+                                    <span class="font-bold text-slate-700 block border-b border-slate-200 pb-1">Fuzzy TDS</span>
+                                    <div class="flex justify-between"><span>μ TDS LOW:</span> <span class="font-mono font-bold" id="f-tds-low">0.00</span></div>
+                                    <div class="flex justify-between"><span>μ TDS MID:</span> <span class="font-mono font-bold" id="f-tds-mid">0.00</span></div>
+                                    <div class="flex justify-between"><span>μ TDS HIGH:</span> <span class="font-mono font-bold" id="f-tds-high">0.00</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Actuator -->
+                    <div class="space-y-6">
+                        <!-- Pompa Utama -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                            <h3 class="text-base font-bold text-slate-900 mb-3">Kecepatan Pompa Utama</h3>
+                            <div class="flex items-center gap-6">
+                                <div class="relative flex items-center justify-center">
+                                    <div class="h-24 w-24 rounded-full border-8 border-slate-100 flex flex-col items-center justify-center border-t-emerald-500 border-r-emerald-500">
+                                        <span class="text-2xl font-black text-slate-900" id="val-pwm">0</span>
+                                        <span class="text-[10px] font-bold text-slate-400">PWM</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-1 flex-1">
+                                    <div class="flex justify-between text-xs font-semibold text-slate-500">
+                                        <span>Status Kerja Pompa</span>
+                                        <span class="text-emerald-600" id="txt-pwm-status">MEMUAT</span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                        <div class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%;" id="bar-pwm"></div>
+                                    </div>
+                                    <p class="text-[11px] text-slate-400 pt-1">Dihitung otomatis oleh logika Fuzzy Sugeno rule base.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Relai -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                            <h3 class="text-base font-bold text-slate-900 mb-4">Status Aktuator Relai</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="border border-slate-200 rounded-xl p-3 flex items-center justify-between" id="card-relay-phup">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-700">Dosing pH UP</span>
+                                        <span class="text-[10px] text-slate-400 font-medium">Relay Pin 2</span>
+                                    </div>
+                                    <span class="h-3 w-3 rounded-full bg-slate-300 shadow-inner" id="led-phup"></span>
+                                </div>
+                                <div class="border border-slate-200 rounded-xl p-3 flex items-center justify-between" id="card-relay-phdown">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-700">Dosing pH DOWN</span>
+                                        <span class="text-[10px] text-slate-400 font-medium">Relay Pin 3</span>
+                                    </div>
+                                    <span class="h-3 w-3 rounded-full bg-slate-300 shadow-inner" id="led-phdown"></span>
+                                </div>
+                                <div class="border border-slate-200 rounded-xl p-3 flex items-center justify-between" id="card-relay-nut1">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-700">Nutrisi A (1)</span>
+                                        <span class="text-[10px] text-slate-400 font-medium">Relay Pin 4</span>
+                                    </div>
+                                    <span class="h-3 w-3 rounded-full bg-slate-300 shadow-inner" id="led-nut1"></span>
+                                </div>
+                                <div class="border border-slate-200 rounded-xl p-3 flex items-center justify-between" id="card-relay-nut2">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-700">Nutrisi B (2)</span>
+                                        <span class="text-[10px] text-slate-400 font-medium">Relay Pin 5</span>
+                                    </div>
+                                    <span class="h-3 w-3 rounded-full bg-slate-300 shadow-inner" id="led-nut2"></span>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="fa-solid fa-water text-sky-500 text-sm"></i>
+                                    <span class="text-xs font-bold text-slate-700">Level Air Tangki Utama</span>
+                                </div>
+                                <span class="text-xs font-extrabold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600" id="val-level">MEMUAT</span>
+                            </div>
+                        </div>
+
+                        <!-- Kalibrasi Mini Form -->
+                        <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                            <h3 class="text-base font-bold text-slate-900 mb-1"><i class="fa-solid fa-screwdriver-wrench text-slate-400 mr-1.5"></i>Kalibrasi Offset Sensor</h3>
+                            <p class="text-xs text-slate-400 mb-4">Kirim parameter offset kalibrasi ke EEPROM Arduino Nano.</p>
+                            <form class="space-y-3" id="mini-calibration-form">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 mb-1">pH Offset</label>
+                                        <input type="number" id="input-ph-offset" step="0.01" placeholder="0.00" class="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 transition-all">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-500 mb-1">TDS Factor</label>
+                                        <input type="number" id="input-tds-factor" step="0.01" placeholder="1.00" class="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-emerald-500 transition-all">
+                                    </div>
+                                </div>
+                                <button type="submit" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-paper-plane text-[10px]"></i> Kirim & Simpan Parameter
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- DOM UI INTERACTION SCRIPT -->
+    <script>
+        // Fungsi Utama Pengolah Data Masuk untuk manipulasi DOM Element
+        function parseIncomingJSON(data) {
+            document.getElementById('val-ph').innerText = data.ph.toFixed(2);
+            document.getElementById('val-tds').innerText = data.tds;
+            document.getElementById('val-temp').innerText = data.temp.toFixed(1);
+            document.getElementById('val-pressure').innerText = data.pressure.toFixed(2);
+            document.getElementById('val-pwm').innerText = data.pump;
+
+            updateBadgeStatus('ph', data.ph, data.ph <= 4.5, data.ph >= 7.5);
+            updateBadgeStatus('tds', data.tds, data.tds <= 1400, data.tds >= 1800);
+            updateBadgeStatus('temp', data.temp, data.temp <= 25, data.temp >= 35);
+            updateBadgeStatus('pressure', data.pressure, data.pressure <= 1.5, data.pressure >= 3.5);
+
+            let percentagePwm = (data.pump / 255) * 100;
+            document.getElementById('bar-pwm').style.width = percentagePwm + "%";
+            
+            if(data.pump === 0) document.getElementById('txt-pwm-status').innerText = "MATI";
+            else if(data.pump <= 120) document.getElementById('txt-pwm-status').innerText = "LAMBAT";
+            else if(data.pump <= 180) document.getElementById('txt-pwm-status').innerText = "SEDANG";
+            else document.getElementById('txt-pwm-status').innerText = "CEPAT";
+
+            updateRelayUI('phup', data.phup);
+            updateRelayUI('phdown', data.phdown);
+            updateRelayUI('nut1', data.nut1);
+            updateRelayUI('nut2', data.nut2);
+
+            const banner = document.getElementById('safety-alert-banner');
+            const indicator = document.getElementById('safety-indicator');
+            const levelBadge = document.getElementById('val-level');
+
+            if(data.level === 0) { 
+                banner.classList.remove('hidden');
+                indicator.className = "bg-rose-50 text-rose-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2";
+                indicator.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Darurat (Air Low)';
+                levelBadge.className = "text-xs font-extrabold px-2.5 py-1 rounded-md bg-rose-100 text-rose-800";
+                levelBadge.innerText = "RENDAH";
+            } else { 
+                banner.classList.add('hidden');
+                indicator.className = "bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2";
+                indicator.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Sistem Aman';
+                levelBadge.className = "text-xs font-extrabold px-2.5 py-1 rounded-md bg-sky-100 text-sky-800";
+                levelBadge.innerText = "TINGGI";
+            }
+
+            calculateFuzzyMemberships(data);
+            
+            const now = new Date();
+            document.getElementById('last-update-time').innerText = now.toTimeString().split(' ')[0];
+            
+            // Mengirim data ke fungsi penambah chart yang ada di app-chart.js
+            if (window.updateDashboardChart) {
+                window.updateDashboardChart(data.ph, data.tds);
+            }
+        }
+
+        function updateBadgeStatus(id, value, isLow, isHigh) {
+            const el = document.getElementById('status-' + id);
+            if (isLow) {
+                el.className = "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700";
+                el.innerHTML = '<i class="fa-solid fa-temperature-empty text-[10px]"></i> Rendah (Low)';
+            } else if (isHigh) {
+                el.className = "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-rose-50 text-rose-700";
+                el.innerHTML = '<i class="fa-solid fa-arrow-trend-up text-[10px]"></i> Tinggi (High)';
+            } else {
+                el.className = "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700";
+                el.innerHTML = '<i class="fa-solid fa-check text-[10px]"></i> Normal (Mid)';
+            }
+        }
+
+        function updateRelayUI(id, isActive) {
+            const led = document.getElementById('led-' + id);
+            const card = document.getElementById('card-relay-' + id);
+            
+            if(isActive) {
+                led.className = "h-3 w-3 rounded-full bg-emerald-500 shadow shadow-emerald-400 animate-pulse";
+                card.className = "border rounded-xl p-3 flex items-center justify-between bg-emerald-50/50 border-emerald-200 transition-all";
+            } else {
+                led.className = "h-3 w-3 rounded-full bg-slate-300 shadow-inner";
+                card.className = "border border-slate-200 rounded-xl p-3 flex items-center justify-between bg-white transition-all";
+            }
+        }
+
+        function calculateFuzzyMemberships(data) {
+            let phL = data.ph <= 4.5 ? 1 : (data.ph < 6.0 ? (6.0 - data.ph)/1.5 : 0);
+            let phH = data.ph <= 6.0 ? 0 : (data.ph < 7.5 ? (data.ph - 6.0)/1.5 : 1);
+            let phM = (data.ph <= 4.5 || data.ph >= 7.5) ? 0 : (data.ph <= 6.0 ? (data.ph - 4.5)/1.5 : (7.5 - data.ph)/1.5);
+            
+            document.getElementById('f-ph-low').innerText = phL.toFixed(2);
+            document.getElementById('f-ph-mid').innerText = phM.toFixed(2);
+            document.getElementById('f-ph-high').innerText = phH.toFixed(2);
+
+            let tdsL = data.tds <= 1400 ? 1 : (data.tds < 1800 ? (1800 - data.tds)/400 : 0);
+            let tdsH = data.tds <= 1400 ? 0 : (data.tds < 1800 ? (data.tds - 1400)/400 : 1);
+            let tdsM = (data.tds <= 1400 || data.tds >= 1800) ? 0 : 1;
+
+            document.getElementById('f-tds-low').innerText = tdsL.toFixed(2);
+            document.getElementById('f-tds-mid').innerText = tdsM.toFixed(2);
+            document.getElementById('f-tds-high').innerText = tdsH.toFixed(2);
+        }
+
+        // Dummy payload saat startup awal sebelum MQTT terkoneksi penuh
+        window.addEventListener('DOMContentLoaded', () => {
+            parseIncomingJSON({ph: 6.0, tds: 1500, temp: 27.0, pressure: 0.0, level: 1, pump: 0, phup: false, phdown: false, nut1: false, nut2: false});
+        });
+    </script>
+    
+    <!-- MEMANGGIL LOGIKA EKSTERNAL SEBELUM TAG PENUTUP BODY -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+
+    <script src="js/app-chart.js"></script>
+    <script src="js/main.js"></script>
+
+    <script src="js/connection.js"></script>
+</body>
+</html>

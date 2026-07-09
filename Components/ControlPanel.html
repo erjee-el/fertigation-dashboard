@@ -1,0 +1,135 @@
+<div class="control-panel bg-white rounded-2xl shadow-sm p-6 border border-slate-200 transition-all duration-300 hover:shadow-md">
+    
+    <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+        <div>
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Panel Kontrol Aktuator</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Status real-time pompa & relay berdasarkan keputusan Fuzzy Logic</p>
+        </div>
+        <span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center gap-1.5 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            Otomatis (Fuzzy)
+        </span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        
+        <div class="relay-card p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between transition-all duration-200 hover:border-slate-300">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-2 rounded-lg border border-slate-200 text-slate-500 shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-arrow-up-from-water-pump text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Relay 1</p>
+                    <h4 class="text-xs font-bold text-slate-700">Pompa pH Up</h4>
+                </div>
+            </div>
+            <div id="relay1-status" class="w-3.5 h-3.5 rounded-full bg-slate-300 shadow-inner border border-slate-400/20 transition-all duration-300"></div>
+        </div>
+
+        <div class="relay-card p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between transition-all duration-200 hover:border-slate-300">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-2 rounded-lg border border-slate-200 text-slate-500 shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-arrow-down-tank-water text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Relay 2</p>
+                    <h4 class="text-xs font-bold text-slate-700">Pompa pH Down</h4>
+                </div>
+            </div>
+            <div id="relay2-status" class="w-3.5 h-3.5 rounded-full bg-slate-300 shadow-inner border border-slate-400/20 transition-all duration-300"></div>
+        </div>
+
+        <div class="relay-card p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between transition-all duration-200 hover:border-slate-300">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-2 rounded-lg border border-slate-200 text-slate-500 shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-flask-vial text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Relay 3</p>
+                    <h4 class="text-xs font-bold text-slate-700">Pompa Nutrisi A</h4>
+                </div>
+            </div>
+            <div id="relay3-status" class="w-3.5 h-3.5 rounded-full bg-slate-300 shadow-inner border border-slate-400/20 transition-all duration-300"></div>
+        </div>
+
+        <div class="relay-card p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between transition-all duration-200 hover:border-slate-300">
+            <div class="flex items-center gap-3">
+                <div class="bg-white p-2 rounded-lg border border-slate-200 text-slate-500 shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-flask-vial text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Relay 4</p>
+                    <h4 class="text-xs font-bold text-slate-700">Pompa Nutrisi B</h4>
+                </div>
+            </div>
+            <div id="relay4-status" class="w-3.5 h-3.5 rounded-full bg-slate-300 shadow-inner border border-slate-400/20 transition-all duration-300"></div>
+        </div>
+    </div>
+
+    <div class="pwm-status-container bg-emerald-50/40 border border-emerald-100 rounded-xl p-4">
+        <div class="flex justify-between items-center mb-2.5">
+            <div class="flex items-center gap-2">
+                <span class="p-1.5 rounded-lg bg-emerald-500 text-white flex items-center justify-center shadow-sm shadow-emerald-500/20">
+                    <i class="fa-solid fa-bolt text-xs"></i>
+                </span>
+                <h4 class="text-xs font-bold text-slate-700">Output PWM Pompa Utama</h4>
+            </div>
+            <span id="pwm-text-value" class="text-xs font-mono font-bold text-emerald-600 bg-emerald-100/60 px-2 py-0.5 rounded-md border border-emerald-200/50">0 / 255</span>
+        </div>
+        
+        <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden shadow-inner">
+            <div id="pwm-progress-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between text-[10px] text-slate-400 mt-1.5 font-mono font-medium">
+            <span>0 (Mati)</span>
+            <span>255 (Maksimal)</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * Memperbarui komponen visual pada panel kontrol aktuator secara real-time.
+     * @param {Object} data - Payload objek JSON yang diterima dari broker MQTT.
+     */
+    function updateActuatorPanel(data) {
+        if (!data) return;
+
+        // Pasangan ID Elemen HTML dan nama properti JSON dari perangkat
+        const relays = [
+            { id: 'relay1-status', value: data.relay_ph_up, activeClass: 'bg-emerald-500' },
+            { id: 'relay2-status', value: data.relay_ph_down, activeClass: 'bg-rose-500' },
+            { id: 'relay3-status', value: data.relay_nutrisi_a, activeClass: 'bg-sky-500' },
+            { id: 'relay4-status', value: data.relay_nutrisi_b, activeClass: 'bg-sky-500' }
+        ];
+
+        // Eksekusi pembaruan status indikator lingkaran relay
+        relays.forEach(relay => {
+            const element = document.getElementById(relay.id);
+            if (element && relay.value !== undefined) {
+                // Konversi nilai ke integer untuk menghindari kesalahan tipe data string "1" atau "0"
+                const state = parseInt(relay.value); 
+                
+                if (state === 1) {
+                    element.classList.remove('bg-slate-300');
+                    element.classList.add(relay.activeClass);
+                } else {
+                    element.classList.remove(relay.activeClass);
+                    element.classList.add('bg-slate-300');
+                }
+            }
+        });
+
+        // Eksekusi pembaruan bar kemajuan (progress bar) PWM Pompa Utama
+        if (data.pwm !== undefined && data.pwm !== null) {
+            const pwmVal = parseInt(data.pwm);
+            // Batasi nilai agar selalu berada di antara 0 hingga 255
+            const safePwm = Math.min(Math.max(pwmVal, 0), 255);
+            // Hitung persentase untuk lebar CSS
+            const percentage = Math.round((safePwm / 255) * 100);
+
+            document.getElementById('pwm-text-value').innerText = `${safePwm} / 255`;
+            document.getElementById('pwm-progress-bar').style.width = `${percentage}%`;
+        }
+    }
+</script>

@@ -1,0 +1,28 @@
+<div class="p-6 border-b border-slate-800 flex items-center gap-3">
+    <div class="bg-emerald-500 text-slate-900 p-2 rounded-xl">
+        <i class="fa-solid fa-seedling text-lg"></i>
+    </div>
+    <div>
+        <h1 class="text-white font-bold text-sm tracking-wide uppercase">Smart Fertigation</h1>
+        <span class="text-xs text-slate-500 font-medium">Arduino Nano & Fuzzy Logic</span>
+    </div>
+</div>
+
+<nav class="p-4 space-y-1 flex-1">
+    <a href="index.html" id="nav-index" class="nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+        <i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboard Monitoring
+    </a>
+    <a href="kalibrasi.html" id="nav-kalibrasi" class="nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+        <i class="fa-solid fa-gears w-5 text-center"></i> Kalibrasi Sensor
+    </a>
+    <a href="riwayat.html" id="nav-riwayat" class="nav-link flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+        <i class="fa-solid fa-clock-history w-5 text-center"></i> Log Riwayat Data
+    </a>
+</nav>
+
+<div class="p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between bg-slate-950/40">
+    <span>Status MQTT:</span>
+    <span id="mqtt-status-badge" class="flex items-center gap-1.5 text-amber-400 font-medium">
+        <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting
+    </span>
+</div>

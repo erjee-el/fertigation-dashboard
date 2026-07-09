@@ -75,21 +75,31 @@ document.addEventListener("DOMContentLoaded", function () {
     // ==========================================
     // 4. INITIALIZATION MOBILE TOGGLE MENU
     // ==========================================
-    function initMobileMenu() {
-        const menuToggleBtn = document.getElementById("menu-toggle");
+   function initMobileMenu() {
+    const menuToggleBtn = document.getElementById("menu-toggle");
 
-        if (menuToggleBtn && sidebarContainer) {
-            menuToggleBtn.addEventListener("click", function (event) {
-                event.stopPropagation(); // Mencegah event bubbling ke document
-                sidebarContainer.classList.toggle("sidebar-active");
+    if (menuToggleBtn && sidebarContainer) {
+        menuToggleBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
+            sidebarContainer.classList.toggle("sidebar-active");
+        });
+    }
+
+    // BARU: Menutup sidebar jika salah satu link menu di dalam sidebar diklik
+    if (sidebarContainer) {
+        const sidebarLinks = sidebarContainer.querySelectorAll("a");
+        sidebarLinks.forEach(link => {
+            link.addEventListener("click", () => {
+                sidebarContainer.classList.remove("sidebar-active");
             });
-        }
+        });
+    }
 
-        // Menutup sidebar otomatis jika user mengklik area di luar sidebar
-        document.addEventListener("click", function (event) {
-            if (sidebarContainer && sidebarContainer.classList.contains("sidebar-active")) {
-                if (!sidebarContainer.contains(event.target) && menuToggleBtn && !menuToggleBtn.contains(event.target)) {
-                    sidebarContainer.classList.remove("sidebar-active");
+    // Menutup sidebar otomatis jika user mengklik area di luar sidebar
+    document.addEventListener("click", function (event) {
+        if (sidebarContainer && sidebarContainer.classList.contains("sidebar-active")) {
+            if (!sidebarContainer.contains(event.target) && menuToggleBtn && !menuToggleBtn.contains(event.target)) {
+                sidebarContainer.classList.remove("sidebar-active");
                 }
             }
         });

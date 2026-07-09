@@ -1,6 +1,6 @@
 /**
  * ==========================================================================
- * MAIN.JS - DASHBOARD UI LOGIC & REAL-TIME DATA ROUTER (COMPURATED & SECURED)
+ * MAIN.JS - DASHBOARD UI LOGIC & REAL-TIME DATA ROUTER (COMPLETED & SECURED)
  * Sistem Monitoring Smart Fertigation - Cabai
  * Handlers: Dynamic Sidebar, Navigation Highlighter, Mobile Menu, & UI Parsers
  * ==========================================================================
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const sidebarContainer = document.getElementById("sidebar");
 
     // ==========================================
-    // 1. DEKLARASI GLOBAL FUNGSI STATUS BADGE (Dinaikkan agar aman dari Race Condition)
+    // 1. DEKLARASI GLOBAL FUNGSI STATUS BADGE
     // ==========================================
     window.updateStatusBadge = function (isConnected) {
         const badge = document.getElementById("mqtt-status-badge");
@@ -26,10 +26,11 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     // ==========================================
-    // 2. MEMUAT KOMPONEN SIDEBAR (ASYNCHRONOUS)
+    // 2. MEMUAT KOMPONEN SIDEBAR (ASYNCHRONOUS - FIXED PATH)
     // ==========================================
     if (sidebarContainer) {
-        fetch("Components/Sidebar.html")
+        // Menggunakan "./" untuk memastikan pemuatan relatif aman dari halaman manapun
+        fetch("./Components/Sidebar.html")
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -46,13 +47,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Daftarkan event handler khusus mobile TEPAT setelah sidebar selesai dimuat
                 initMobileMenu();
 
-                // Periksa status MQTT awal jika client sudah terhubung lebih dulu
+                // Periksa status MQTT awal jika client sudah terhubung lebih dulu di connection.js
                 if (window.mqttClient && typeof window.mqttClient.isConnected === 'function') {
                     const isConnected = window.mqttClient.isConnected();
                     window.updateStatusBadge(isConnected);
                 }
             })
-            .catch(err => console.error("[UI] Gagal memuat komponen sidebar:", err));
+            .catch(err => {
+                console.error("[UI] Gagal memuat komponen sidebar:", err);
+                // Fallback: Tetap jalankan fungsi menu agar tombol mobile tidak mati total jika terjadi kendala jaringan
+                initMobileMenu(); 
+            });
     }
 
     // ==========================================
@@ -73,33 +78,40 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ==========================================
-    // 4. INITIALIZATION MOBILE TOGGLE MENU
+    // 4. INITIALIZATION MOBILE TOGGLE MENU (ANTI-COLLISION)
     // ==========================================
-   function initMobileMenu() {
-    const menuToggleBtn = document.getElementById("menu-toggle");
+    function initMobileMenu() {
+        const menuToggleBtn = document.getElementById("menu-toggle");
 
-    if (menuToggleBtn && sidebarContainer) {
-        menuToggleBtn.addEventListener("click", function (event) {
-            event.stopPropagation();
-            sidebarContainer.classList.toggle("sidebar-active");
-        });
-    }
+        if (menuToggleBtn && sidebarContainer) {
+            // Kloning tombol untuk membersihkan sisa event listener ganda yang menempel saat pindah halaman
+            const newToggleBtn = menuToggleBtn.cloneNode(true);
+            menuToggleBtn.replaceWith(newToggleBtn);
 
-    // BARU: Menutup sidebar jika salah satu link menu di dalam sidebar diklik
-    if (sidebarContainer) {
-        const sidebarLinks = sidebarContainer.querySelectorAll("a");
-        sidebarLinks.forEach(link => {
-            link.addEventListener("click", () => {
-                sidebarContainer.classList.remove("sidebar-active");
+            newToggleBtn.addEventListener("click", function (event) {
+                event.preventDefault();
+                event.stopPropagation(); // Mencegah event menutup otomatis terpicu instan
+                sidebarContainer.classList.toggle("sidebar-active");
             });
-        });
-    }
+        }
 
-    // Menutup sidebar otomatis jika user mengklik area di luar sidebar
-    document.addEventListener("click", function (event) {
-        if (sidebarContainer && sidebarContainer.classList.contains("sidebar-active")) {
-            if (!sidebarContainer.contains(event.target) && menuToggleBtn && !menuToggleBtn.contains(event.target)) {
-                sidebarContainer.classList.remove("sidebar-active");
+        // Otomatis menutup sidebar jika salah satu link menu di dalam sidebar diklik
+        if (sidebarContainer) {
+            const sidebarLinks = sidebarContainer.querySelectorAll("a");
+            sidebarLinks.forEach(link => {
+                link.addEventListener("click", () => {
+                    sidebarContainer.classList.remove("sidebar-active");
+                });
+            });
+        }
+
+        // Menutup sidebar otomatis jika user mengklik area bebas di luar dokumen sidebar
+        document.addEventListener("click", function (event) {
+            const btn = document.getElementById("menu-toggle");
+            if (sidebarContainer && sidebarContainer.classList.contains("sidebar-active")) {
+                // Pastikan yang diklik bukan bagian dalam sidebar DAN bukan tombol garis tiganya
+                if (!sidebarContainer.contains(event.target) && btn && !btn.contains(event.target)) {
+                    sidebarContainer.classList.remove("sidebar-active");
                 }
             }
         });
@@ -107,46 +119,45 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // ==========================================================================
-// 5. GLOBAL HANDLER: PARSE INCOMING DATA (Diselaraskan dengan ID index.html)
+// 5. GLOBAL HANDLER: PARSE INCOMING DATA (Data Sensor Real-time)
 // ==========================================================================
-
 window.parseIncomingJSON = function (payload) {
     if (!payload) return;
 
     try {
-        // Parsing pH dengan pengaman tipe data
+        // Parsing pH dengan pengaman tipe data dari RS485
         if (payload.ph !== undefined && payload.ph !== null) {
             const phVal = parseFloat(payload.ph);
             const phEl = document.getElementById('val-ph');
             if (phEl && !isNaN(phVal)) phEl.innerText = phVal.toFixed(2);
         }
 
-        // Parsing TDS dengan pengaman tipe data
+        // Parsing TDS dengan pengaman tipe data dari RS485
         if (payload.tds !== undefined && payload.tds !== null) {
             const tdsVal = parseInt(payload.tds);
             const tdsEl = document.getElementById('val-tds');
             if (tdsEl && !isNaN(tdsVal)) tdsEl.innerText = tdsVal;
         }
 
-        // Pembaharuan Stempel Waktu (Timestamp Lokalan)
+        // Pembaharuan Stempel Waktu Pengiriman Alat (Timestamp Lokalan)
         const timeEl = document.getElementById('last-update-time');
         if (timeEl) {
             const now = new Date();
             timeEl.innerText = now.toTimeString().split(' ')[0];
         }
 
-        // Pemicu Status Indikator Bahaya/Aman (Disesuaikan rentang target cabai generatif)
+        // Pemicu Status Indikator Bahaya/Aman (Disesuaikan rentang target tanaman cabai generatif)
         if (typeof updateBadgeStatus === "function") {
             updateBadgeStatus('ph', payload.ph, payload.ph < 5.5, payload.ph > 6.5);
             updateBadgeStatus('tds', payload.tds, payload.tds < 1200, payload.tds > 1500);
         }
         
-        // Perhitungan visualisasi keanggotaan fuzzy di web dashboard
+        // Integrasi perhitungan visualisasi keanggotaan logika fuzzy di web dashboard
         if (typeof calculateFuzzyMemberships === "function") {
             calculateFuzzyMemberships(payload);
         }
 
-        // Pemicu pembaruan real-time grafik Chart.js
+        // Pemicu pembaruan real-time grafik Chart.js tanpa membuat lag browser
         if (window.updateDashboardChart && payload.ph !== undefined && payload.tds !== undefined) {
             window.updateDashboardChart(payload.ph, payload.tds);
         }
@@ -156,10 +167,13 @@ window.parseIncomingJSON = function (payload) {
     }
 };
 
+// ==========================================================================
+// 6. GLOBAL HANDLER: ACTUATOR MONITOR (Status Relay & PWM Pompa)
+// ==========================================================================
 window.updateActuatorPanel = function (payload) {
     if (!payload) return;
 
-    // Pengaman konversi biner relay untuk menghindari bug "NaN === 1"
+    // Pengaman konversi biner relay untuk menghindari bug "NaN" atau "terbaca hidup terus"
     if (typeof updateRelayUI === "function") {
         if (payload.relay_ph_up !== undefined && payload.relay_ph_up !== null) {
             updateRelayUI('phup', parseInt(payload.relay_ph_up) === 1);
@@ -175,7 +189,7 @@ window.updateActuatorPanel = function (payload) {
         }
     }
 
-    // Manajer Kecepatan Pompa Utama Melalui Nilai Output PWM Drip Irrigation
+    // Manajer Visualisasi Kecepatan Aliran Distribusi Menggunakan Nilai Output PWM Drip Irrigation
     if (payload.pwm !== undefined && payload.pwm !== null) {
         const pwmText = document.getElementById('val-pwm');
         const pwmBar = document.getElementById('bar-pwm');

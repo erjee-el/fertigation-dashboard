@@ -89,9 +89,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* 5. Utility Class Tambahan (Mencegah Teks Pecah Saat Transisi Layout) */
 .truncate-2-lines {
     display: -webkit-box;
-    -webkit-box-orient: vertical;  
+    -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-    line-clamp: 2;        
+    line-clamp: 2;
     overflow: hidden;
 }
 
@@ -106,15 +106,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         top: 0;
         left: 0;
         height: 100vh !important;
-        width: 16rem; 
+        width: 16rem;
         overflow-y: auto;
         z-index: 50;
         visibility: visible !important;
     }
-    
-    .main-content {
-        margin-left: 256px !important;
-    }
+
+    /* PERBAIKAN: margin-left: 256px !important pada .main-content
+       DIHAPUS dari sini.
+
+       Penyebab jarak kosong lebar antara sidebar dan konten adalah karena
+       #sidebar sudah "position: relative" dan menjadi bagian dari flexbox
+       (.min-h-screen.flex di index.html). Lebar 256px sidebar itu sendiri
+       SUDAH otomatis mendorong .main-content ke kanan lewat flexbox.
+       Menambahkan margin-left: 256px lagi di .main-content membuat konten
+       terdorong DUA KALI, sehingga muncul celah kosong selebar sidebar
+       di antara menu dan data. */
 }
 
 /* Pengaturan Mobile (Layar Kecil) */
@@ -122,11 +129,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     .sidebar {
         position: fixed !important;
         top: 0;
-        left: -260px !important; 
+        left: -260px !important;
         height: 100vh !important;
         width: 250px;
         z-index: 100;
-        visibility: hidden; 
+        visibility: hidden;
         transition: left 0.3s ease-in-out, visibility 0.3s ease-in-out;
     }
 
@@ -136,7 +143,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         visibility: visible !important;
     }
 
-    /* Overlay untuk mengunci layar saat sidebar mobile terbuka */
+    /* Overlay untuk mengunci layar saat sidebar mobile terbuka.
+       Catatan: agar selector "~" di bawah ini benar-benar berfungsi,
+       elemen .sidebar-overlay di index.html harus berada sebagai
+       sibling langsung setelah #sidebar (bukan di dalam <main>). */
     .sidebar-overlay {
         display: none;
         position: fixed;
@@ -155,7 +165,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* 7. UTILITY TAMBAHAN UNTUK TOMBOL MENU (OVERRIDE SAFETY) */
 #menu-toggle {
-    z-index: 1000 !important; 
+    z-index: 1000 !important;
     position: relative;
     cursor: pointer;
 }

@@ -34,16 +34,18 @@
 </head>
 <body class="text-slate-800 antialiased">
 
-    <div class="min-h-screen flex bg-slate-50">
-
-        <aside id="sidebar" class="sidebar bg-slate-900 text-slate-300 flex flex-col flex-shrink-0">
+    <div class="min-h-screen flex overflow-hidden">
+        
+        <aside id="sidebar" class="sidebar bg-slate-900 text-slate-300 flex flex-col justify-between fixed h-full z-50">
             <div>
-                <div class="p-6 border-b border-slate-800">
-                    <div class="bg-emerald-500 text-slate-900 p-2 rounded-xl inline-block mb-3">
+                <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+                    <div class="bg-emerald-500 text-slate-900 p-2 rounded-xl">
                         <i class="fa-solid fa-seedling text-lg"></i>
                     </div>
-                    <h1 class="text-white font-bold text-sm uppercase">Smart Fertigation</h1>
-                    <span class="text-xs text-slate-500">ESP8266 & Fuzzy</span>
+                    <div>
+                        <h1 class="text-white font-bold text-sm tracking-wide uppercase">Smart Fertigation</h1>
+                        <span class="text-xs text-slate-500 font-medium">ESP8266 & Fuzzy</span>
+                    </div>
                 </div>
 
                 <nav class="p-4 space-y-1">
@@ -62,7 +64,7 @@
                 </nav>
             </div>
 
-            <div class="mt-auto p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
                 <span>Status MQTT:</span>
                 <span id="mqtt-status-badge" class="flex items-center gap-1.5 text-amber-400 font-medium">
                     <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting
@@ -70,7 +72,7 @@
             </div>
         </aside>
 
-        <main class="main-content flex-1 w-full min-w-0 h-screen overflow-y-auto">
+        <main class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto main-content">
             <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
                 <div class="flex items-center gap-4">
                     <button id="menu-toggle" class="lg:hidden text-slate-600 hover:text-slate-900 p-1">
@@ -78,20 +80,22 @@
                     </button>
                     <div>
                         <h2 class="text-xl font-bold text-slate-900">Sistem Monitoring & Fertigasi</h2>
-                        <p class="text-xs text-slate-500">Pemantauan real-time • Update terakhir: <span id="last-update-time">--:--:--</span></p>
+                        <p class="text-xs text-slate-500">Pemantauan real-time</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
                     <div id="safety-indicator" class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2">
                         <i class="fa-solid fa-shield-halved"></i> Sistem Aman
                     </div>
+                    <div class="text-right hidden sm:block">
+                        <p class="text-xs text-slate-400 font-medium">Terakhir Diperbarui</p>
+                        <p class="text-sm font-semibold text-slate-700" id="last-update-time">--:--:--</p>
+                    </div>
                 </div>
             </header>
 
-            <div class="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('sidebar-active')"></div>
-
             <div class="p-6 space-y-6 max-w-[1600px] w-full mx-auto">
-
+                
                 <div id="safety-alert-banner" class="hidden bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-4 text-rose-800">
                     <div class="bg-rose-500 text-white p-2 rounded-xl mt-0.5">
                         <i class="fa-solid fa-circle-exclamation text-xl"></i>
@@ -363,7 +367,7 @@
     <script>
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof window.parseIncomingJSON === "function") {
-                window.parseIncomingJSON({ph: 6.0, tds: 1500, temp: 27.0, pressure: 0.0, level: 1, pwm: 0, phup: false, phdown: false, nut1: false, nut2: false});
+                window.parseIncomingJSON({ph: 6.0, tds: 1500, temp: 27.0, pressure: 0.0, level: 1, pump: 0, phup: false, phdown: false, nut1: false, nut2: false});
             }
         });
     </script>

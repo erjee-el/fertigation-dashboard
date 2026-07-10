@@ -36,35 +36,33 @@
 
     <div class="min-h-screen flex bg-slate-50">
         
-        <asside id="sidebar" class="sidebar bg-slate-900 text-slate-300 flex flex-col flex-shrink-0">
+        <aside id="sidebar" class="sidebar bg-slate-900 text-slate-300 flex flex-col flex-shrink-0">
             <div>
                 <div class="p-6 border-b border-slate-800">
-                    <div class="bg-emerald-500 text-slate-900 p-2 rounded-xl">
+                    <div class="bg-emerald-500 text-slate-900 p-2 rounded-xl inline-block mb-3">
                         <i class="fa-solid fa-seedling text-lg"></i>
                     </div>
-                    <div>
-                        <h1 class="text-white font-bold text-sm uppercase">Smart Fertigation</h1>
-                        <span class="text-xs text-slate-500">ESP8266 & Fuzzy</span>
-                    </div>
+                    <h1 class="text-white font-bold text-sm uppercase">Smart Fertigation</h1>
+                    <span class="text-xs text-slate-500">ESP8266 & Fuzzy</span>
                 </div>
     
                 <nav class="p-4 space-y-1">
-                    <a href="index.html" id="nav-index" class="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-xl font-medium text-sm">
+                    <a href="index.html" class="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-xl font-medium text-sm">
                         <i class="fa-solid fa-chart-pie"></i> Dashboard
                     </a>
-                    <a href="#" id="nav-kontrol" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+                    <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
                         <i class="fa-solid fa-sliders"></i> Kontrol Manual
                     </a>
-                    <a href="kalibrasi.html" id="nav-kalibrasi" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+                    <a href="kalibrasi.html" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
                         <i class="fa-solid fa-gears"></i> Kalibrasi Sensor
                     </a>
-                    <a href="riwayat.html" id="nav-riwayat" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
+                    <a href="riwayat.html" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all">
                         <i class="fa-solid fa-clock-history"></i> Riwayat Data
                     </a>
                 </nav>
             </div>
 
-            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+            <div class="mt-auto p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
                 <span>Status MQTT:</span>
                 <span id="mqtt-status-badge" class="flex items-center gap-1.5 text-amber-400 font-medium">
                     <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span> Connecting

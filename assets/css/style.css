@@ -126,27 +126,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* Pengaturan Mobile (Layar Kecil) */
 @media (max-width: 1023px) {
-    .sidebar {
+    #sidebar {
         position: fixed !important;
         top: 0;
         left: -260px !important;
         height: 100vh !important;
-        width: 250px;
+        width: 16rem;
         z-index: 100;
         visibility: hidden;
         transition: left 0.3s ease-in-out, visibility 0.3s ease-in-out;
     }
 
     /* Ketika sidebar aktif (state terbuka) */
-    .sidebar.sidebar-active {
+    #sidebar.sidebar-active {
         left: 0 !important;
         visibility: visible !important;
     }
 
-    /* Overlay untuk mengunci layar saat sidebar mobile terbuka.
-       Catatan: agar selector "~" di bawah ini benar-benar berfungsi,
-       elemen .sidebar-overlay di index.html harus berada sebagai
-       sibling langsung setelah #sidebar (bukan di dalam <main>). */
     .sidebar-overlay {
         display: none;
         position: fixed;
@@ -158,7 +154,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         z-index: 90;
     }
 
-    .sidebar.sidebar-active ~ .sidebar-overlay {
+    #sidebar.sidebar-active ~ .sidebar-overlay {
         display: block;
     }
 }

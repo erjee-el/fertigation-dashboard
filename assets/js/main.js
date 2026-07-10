@@ -4,10 +4,56 @@
  * ==========================================================================
  */
 
+// --- Definisi fungsi lebih dulu, baru dipakai di bawah ---
+
+// HIGHLIGHT MENU (berdasarkan href, tidak bergantung pada id tertentu)
+window.highlightActiveMenu = function() {
+    const path = window.location.pathname.split("/").pop() || "index.html";
+    const links = document.querySelectorAll("#sidebar nav a");
+    links.forEach(link => {
+        const href = link.getAttribute("href");
+        const isActive = href === path;
+        link.className = isActive
+            ? "flex items-center gap-3 px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-xl font-medium text-sm"
+            : "flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all";
+    });
+};
+
+// MOBILE MENU TOGGLE
+window.initMobileMenu = function() {
+    const btn = document.getElementById("menu-toggle");
+    const sb = document.getElementById("sidebar");
+    const overlay = document.querySelector(".sidebar-overlay");
+    if (!btn || !sb) return;
+
+    btn.onclick = (e) => {
+        e.stopPropagation();
+        sb.classList.toggle("sidebar-active");
+    };
+
+    document.onclick = (e) => {
+        if (!sb.contains(e.target) && !btn.contains(e.target)) {
+            sb.classList.remove("sidebar-active");
+        }
+    };
+
+    if (overlay) {
+        overlay.onclick = () => sb.classList.remove("sidebar-active");
+    }
+};
+
+// GLOBAL STATUS BADGE
+window.updateStatusBadge = function (isConnected) {
+    const badge = document.getElementById("mqtt-status-badge");
+    if (!badge) return;
+    badge.className = `flex items-center gap-1.5 ${isConnected ? 'text-emerald-400' : 'text-rose-500'} font-medium`;
+    badge.innerHTML = `<span class="h-2 w-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}"></span> ${isConnected ? 'Connected (Live)' : 'Disconnected'}`;
+};
+
 document.addEventListener("DOMContentLoaded", function () {
     const sidebarContainer = document.getElementById("sidebar");
 
-    // 1. MEMUAT KOMPONEN SIDEBAR
+    // MEMUAT KOMPONEN SIDEBAR
     // Jika sidebar sudah ditulis langsung di HTML (punya isi/children),
     // jangan fetch ulang -- cukup jalankan highlight & mobile menu.
     if (sidebarContainer) {
@@ -27,36 +73,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 .catch(() => window.initMobileMenu());
         }
     }
-
-    // 2. HIGHLIGHT MENU (berdasarkan href, tidak bergantung pada id tertentu)
-    window.highlightActiveMenu = function() {
-        const path = window.location.pathname.split("/").pop() || "index.html";
-        const links = document.querySelectorAll("#sidebar nav a");
-        links.forEach(link => {
-            const href = link.getAttribute("href");
-            const isActive = href === path;
-            link.className = isActive
-                ? "flex items-center gap-3 px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-xl font-medium text-sm"
-                : "flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-slate-200 rounded-xl font-medium text-sm transition-all";
-        });
-    };
-
-    // 3. MOBILE MENU TOGGLE
-    window.initMobileMenu = function() {
-        const btn = document.getElementById("menu-toggle");
-        const sb = document.getElementById("sidebar");
-        if (!btn || !sb) return;
-        btn.onclick = (e) => { e.stopPropagation(); sb.classList.toggle("sidebar-active"); };
-        document.onclick = (e) => { if (!sb.contains(e.target) && !btn.contains(e.target)) sb.classList.remove("sidebar-active"); };
-    };
-
-    // 4. GLOBAL STATUS BADGE
-    window.updateStatusBadge = function (isConnected) {
-        const badge = document.getElementById("mqtt-status-badge");
-        if (!badge) return;
-        badge.className = `flex items-center gap-1.5 ${isConnected ? 'text-emerald-400' : 'text-rose-500'} font-medium`;
-        badge.innerHTML = `<span class="h-2 w-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}"></span> ${isConnected ? 'Connected (Live)' : 'Disconnected'}`;
-    };
 });
 
 // Helper kecil: set innerText hanya jika elemen ada, biar 1 elemen yang
@@ -66,7 +82,7 @@ function setText(id, value) {
     if (el) el.innerText = value;
 }
 
-// 5. DATA PARSER (REAL-TIME)
+// DATA PARSER (REAL-TIME)
 window.parseIncomingJSON = function (payload) {
     if (!payload) return;
     try {
@@ -105,7 +121,7 @@ window.parseIncomingJSON = function (payload) {
     }
 };
 
-// 6. ACTUATOR MONITOR
+// ACTUATOR MONITOR
 // Payload memakai key singkat (phup, phdown, nut1, nut2, pwm) sesuai
 // data uji di index.html, jadi disamakan langsung di sini.
 window.updateActuatorPanel = function (payload) {

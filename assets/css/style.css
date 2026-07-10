@@ -101,12 +101,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* Pengaturan Desktop (Layar Lebar) */
 @media (min-width: 1024px) {
-    .sidebar {
-        position: fixed !important;
+    #sidebar {
+        position: relative !important;
         top: 0;
         left: 0;
         height: 100vh !important;
-        width: 256px; 
+        width: 16rem; 
         overflow-y: auto;
         z-index: 50;
         visibility: visible !important;

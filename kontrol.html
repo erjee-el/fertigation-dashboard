@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontrol Manual - Smart Fertigation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+        }
+        .relay-btn[data-active="true"].btn-on {
+            background-color: #059669;
+            color: #fff;
+        }
+        .relay-btn[data-active="false"].btn-off {
+            background-color: #e11d48;
+            color: #fff;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 9999px;
+            background: #059669;
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 0 0 3px rgba(5,150,105,0.15);
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 4px;
+            border-radius: 9999px;
+            background: #e2e8f0;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <div class="min-h-screen flex overflow-hidden">
+        <aside id="sidebar" class="sidebar bg-slate-900 text-slate-300 flex flex-col justify-between fixed h-full z-50"></aside>
+
+        <main class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto main-content">
+
+            <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-4">
+                    <button id="menu-toggle" class="lg:hidden text-slate-600 hover:text-slate-900 p-1">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900">Kontrol Manual Aktuator</h2>
+                        <p class="text-xs text-slate-500">Override langsung terhadap keputusan logika fuzzy otomatis</p>
+                    </div>
+                </div>
+                <div id="mode-badge" class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-robot"></i> Mode Otomatis (Fuzzy)
+                </div>
+            </header>
+
+            <div class="p-6 space-y-6 max-w-[1200px] w-full mx-auto">
+
+                <div id="manual-warning-banner" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-4 text-amber-800">
+                    <div class="bg-amber-500 text-white p-2 rounded-xl mt-0.5">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base text-amber-900">MODE MANUAL AKTIF</h4>
+                        <p class="text-sm text-amber-700 mt-0.5">Logika fuzzy otomatis dinonaktifkan sementara. Seluruh aktuator kini dikendalikan langsung oleh perintah dari halaman ini. Kembalikan ke mode otomatis setelah selesai.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-slate-100 text-slate-600 h-11 w-11 rounded-xl flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-toggle-on"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-sm">Mode Sistem</h3>
+                            <p class="text-xs text-slate-400">Pilih siapa yang mengendalikan pompa & dosing saat ini</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+                        <button id="btn-mode-auto" data-mode="auto" class="mode-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white">
+                            <i class="fa-solid fa-robot mr-1"></i> Otomatis
+                        </button>
+                        <button id="btn-mode-manual" data-mode="manual" class="mode-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-500">
+                            <i class="fa-solid fa-hand mr-1"></i> Manual
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">pH Larutan</p>
+                        <h3 id="val-ph" class="text-xl font-bold text-slate-800 mt-1">0.00</h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">TDS Nutrisi</p>
+                        <h3 id="val-tds" class="text-xl font-bold text-slate-800 mt-1">0 <span class="text-xs font-medium text-slate-400">PPM</span></h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Level Tangki</p>
+                        <h3 id="val-level" class="text-xl font-bold text-slate-800 mt-1">MEMUAT</h3>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">PWM Aktif</p>
+                        <h3 id="val-pwm" class="text-xl font-bold text-slate-800 mt-1">0</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+                        <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                            <div class="bg-emerald-50 text-emerald-600 h-10 w-10 rounded-xl flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-gauge-high"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900">Pompa Utama (PWM)</h3>
+                                <p class="text-xs text-slate-400">Atur kecepatan pompa utama secara manual (0 - 255)</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+                                <span>Kecepatan Pompa</span>
+                                <span><span id="pwm-slider-value" class="text-slate-900 font-bold">0</span> / 255</span>
+                            </div>
+                            <input type="range" id="pwm-slider" min="0" max="255" value="0" step="1" class="w-full" disabled>
+                        </div>
+
+                        <button id="btn-send-pwm" disabled class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Kirim Kecepatan Pompa
+                        </button>
+                        <p class="text-[11px] text-slate-400">Kontrol ini hanya aktif ketika sistem berada di Mode Manual.</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+                        <div class="flex items-center gap-3 border-b border-slate-100 pb-3">
+                            <div class="bg-rose-50 text-rose-600 h-10 w-10 rounded-xl flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-power-off"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900">Berhenti Darurat</h3>
+                                <p class="text-xs text-slate-400">Matikan seluruh pompa & relai dosing secara instan</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500">Gunakan tombol ini apabila terjadi kondisi tidak normal pada hardware (kebocoran, tumpahan, level air kritis, dsb).</p>
+                        <button id="btn-emergency-stop" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-hand"></i> STOP SEMUA AKTUATOR
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200">
+                    <h3 class="font-bold text-slate-900 mb-1">Kontrol Relai Dosing</h3>
+                    <p class="text-xs text-slate-400 mb-4">Nyalakan / matikan aktuator dosing secara langsung saat Mode Manual aktif</p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                        <div class="border border-slate-200 rounded-xl p-4 space-y-3" id="card-relay-phup">
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-slate-700">Dosing pH UP</span>
+                                    <span class="text-[10px] text-slate-400 font-medium">Relay Pin 2</span>
+                                </div>
+                                <span class="h-3 w-3 rounded-full bg-slate-300 shadow-inner" id="led-phup"></span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="relay-btn btn-on flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 transition-all" data-relay="phup" data-state="1" disabled>ON</button>
+                                <button class="relay-btn btn-off flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 transition-all" data-relay="phup" data-state="0" disabled>OFF</button>
+                            </div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-xl p-4 space-y-3" id="card-relay-phdown">
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-slate-700">Dosing pH DOWN</span>
+                                    <span class="text-[10px] text-slate-400 font-medium">Relay Pin 3</span>
+                                </div>
+                                <span class="h-3 w-3 rounded-full bg-slate-300 shadow-inner" id="led-phdown"></span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="relay-btn btn-on flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 transition-all" data-relay="phdown" data-state="1" disabled>ON</button>
+                                <button class="relay-btn btn-off flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 transition-all" data-relay="phdown" data-state="0" disabled>OFF</button>
+                            </div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-xl p-4 space-y-3" id="card-relay-nut1">
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-slate-700">Nutrisi A (1)</span>
+                                    <span class="text-[10px] text-slate-400 font-medium">Relay Pin 4</span>
+                                </div>
+                                <span class="h-3 w-3 rounded-full bg-slate-300 shadow-inner" id="led-nut1"></span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="relay-btn btn-on flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 transition-all" data-relay="nut1" data-state="1" disabled>ON</button>
+                                <button class="relay-btn btn-off flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 transition-all" data-relay="nut1" data-state="0" disabled>OFF</button>
+                            </div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded-xl p-4 space-y-3" id="card-relay-nut2">
+                            <div class="flex items-center justify-between">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-slate-700">Nutrisi B (2)</span>
+                                    <span class="text-[10px] text-slate-400 font-medium">Relay Pin 5</span>
+                                </div>
+                                <span class="h-3 w-3 rounded-full bg-slate-300 shadow-inner" id="led-nut2"></span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="relay-btn btn-on flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 transition-all" data-relay="nut2" data-state="1" disabled>ON</button>
+                                <button class="relay-btn btn-off flex-1 py-1.5 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-500 transition-all" data-relay="nut2" data-state="0" disabled>OFF</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Status mode saat ini: 'auto' atau 'manual'. Default aman = auto.
+        let currentMode = 'auto';
+
+        /**
+         * Menerima data JSON real-time dari MQTT broker (dipanggil dari connection.js).
+         * Memperbarui pembacaan sensor, status relai, PWM, dan badge mode.
+         */
+        function parseIncomingJSON(data) {
+            if (!data) return;
+
+            if (data.ph !== undefined && data.ph !== null) {
+                document.getElementById('val-ph').innerText = parseFloat(data.ph).toFixed(2);
+            }
+            if (data.tds !== undefined && data.tds !== null) {
+                document.getElementById('val-tds').innerHTML = `${parseInt(data.tds)} <span class="text-xs font-medium text-slate-400">PPM</span>`;
+            }
+            if (data.level !== undefined && data.level !== null) {
+                const levelText = data.level === 1 ? 'NORMAL' : 'RENDAH';
+                const levelEl = document.getElementById('val-level');
+                levelEl.innerText = levelText;
+                levelEl.className = data.level === 1 ? 'text-xl font-bold text-emerald-600 mt-1' : 'text-xl font-bold text-rose-600 mt-1';
+            }
+            if (data.pwm !== undefined && data.pwm !== null) {
+                document.getElementById('val-pwm').innerText = data.pwm;
+            }
+            if (data.mode !== undefined && data.mode !== null) {
+                setModeUI(data.mode === 'manual' ? 'manual' : 'auto');
+            }
+
+            updateRelayLed('phup', data.phup);
+            updateRelayLed('phdown', data.phdown);
+            updateRelayLed('nut1', data.nut1);
+            updateRelayLed('nut2', data.nut2);
+        }
+
+        function updateRelayLed(id, isActive) {
+            if (isActive === undefined || isActive === null) return;
+            const led = document.getElementById('led-' + id);
+            if (!led) return;
+            led.className = isActive
+                ? "h-3 w-3 rounded-full bg-emerald-500 shadow shadow-emerald-400 animate-pulse"
+                : "h-3 w-3 rounded-full bg-slate-300 shadow-inner";
+        }
+
+        /**
+         * Mengatur tampilan UI (badge, banner, disabled state) sesuai mode aktif.
+         */
+        function setModeUI(mode) {
+            currentMode = mode;
+            const badge = document.getElementById('mode-badge');
+            const banner = document.getElementById('manual-warning-banner');
+            const btnAuto = document.getElementById('btn-mode-auto');
+            const btnManual = document.getElementById('btn-mode-manual');
+            const isManual = mode === 'manual';
+
+            badge.className = isManual
+                ? "bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2"
+                : "bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2";
+            badge.innerHTML = isManual
+                ? '<i class="fa-solid fa-hand"></i> Mode Manual'
+                : '<i class="fa-solid fa-robot"></i> Mode Otomatis (Fuzzy)';
+
+            banner.classList.toggle('hidden', !isManual);
+
+            btnAuto.className = "mode-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all " + (!isManual ? "bg-emerald-600 text-white" : "text-slate-500");
+            btnManual.className = "mode-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all " + (isManual ? "bg-amber-500 text-white" : "text-slate-500");
+
+            document.getElementById('pwm-slider').disabled = !isManual;
+            document.getElementById('btn-send-pwm').disabled = !isManual;
+            document.querySelectorAll('.relay-btn').forEach(btn => {
+                btn.disabled = !isManual;
+                btn.className = btn.className.replace(/bg-slate-100 text-slate-500|bg-white text-slate-500/, isManual ? "bg-white text-slate-500" : "bg-slate-100 text-slate-500");
+            });
+        }
+
+        /**
+         * Helper pengiriman perintah kontrol via MQTT.
+         * publishCalibration didefinisikan secara global di dalam connection.js dan
+         * digunakan sebagai fungsi publish generik (topic, payload).
+         */
+        function sendControlCommand(topic, payload) {
+            if (typeof window.publishCalibration === 'function') {
+                window.publishCalibration(topic, payload);
+                return true;
+            }
+            alert('Gagal mengirim perintah. Koneksi MQTT belum siap atau tidak tersedia.');
+            return false;
+        }
+
+        // Tombol pilih Mode Otomatis
+        document.getElementById('btn-mode-auto').addEventListener('click', function() {
+            if (currentMode === 'auto') return;
+            if (sendControlCommand('kontrol/mode', { mode: 'auto' })) {
+                setModeUI('auto');
+            }
+        });
+
+        // Tombol pilih Mode Manual
+        document.getElementById('btn-mode-manual').addEventListener('click', function() {
+            if (currentMode === 'manual') return;
+            if (!confirm('Aktifkan Mode Manual? Logika fuzzy otomatis akan dinonaktifkan sementara.')) return;
+            if (sendControlCommand('kontrol/mode', { mode: 'manual' })) {
+                setModeUI('manual');
+            }
+        });
+
+        // Slider PWM Pompa Utama
+        const pwmSlider = document.getElementById('pwm-slider');
+        pwmSlider.addEventListener('input', function() {
+            document.getElementById('pwm-slider-value').innerText = this.value;
+        });
+
+        // Kirim Kecepatan Pompa
+        document.getElementById('btn-send-pwm').addEventListener('click', function() {
+            const value = parseInt(pwmSlider.value);
+            if (sendControlCommand('kontrol/pwm', { pwm: value })) {
+                alert('Perintah kecepatan pompa (' + value + ') berhasil dikirim ke perangkat!');
+            }
+        });
+
+        // Tombol ON/OFF setiap relai dosing
+        document.querySelectorAll('.relay-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const relay = this.dataset.relay;
+                const state = parseInt(this.dataset.state);
+                if (sendControlCommand('kontrol/relay', { relay: relay, state: state })) {
+                    updateRelayLed(relay, state === 1);
+                }
+            });
+        });
+
+        // Tombol Berhenti Darurat
+        document.getElementById('btn-emergency-stop').addEventListener('click', function() {
+            if (!confirm('Matikan SELURUH pompa & relai dosing sekarang?')) return;
+            if (sendControlCommand('kontrol/emergency', { stop: true })) {
+                ['phup', 'phdown', 'nut1', 'nut2'].forEach(id => updateRelayLed(id, false));
+                document.getElementById('val-pwm').innerText = '0';
+                alert('Perintah berhenti darurat berhasil dikirim ke perangkat!');
+            }
+        });
+
+        // Inisialisasi tampilan awal (aman: default Mode Otomatis, kontrol manual nonaktif)
+        window.addEventListener('DOMContentLoaded', () => {
+            setModeUI('auto');
+        });
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+
+    <script src="assets/js/connection.js"></script>
+
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

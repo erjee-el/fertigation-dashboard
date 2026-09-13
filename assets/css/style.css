@@ -1,0 +1,167 @@
+/* ==========================================================================
+   STYLE.CSS - SMART FERTIGATION UTILITY & CUSTOM ANIMATIONS
+   Digunakan sebagai pelengkap utilitas Tailwind CSS (Dashboard IoT)
+   ========================================================================== */
+
+/* 1. Pengaturan Dasar & Optimasi Rendering Teks */
+body {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+/* 2. Kustomisasi Scrollbar untuk Tabel Data / Kontainer yang Panjang */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* 3. Reset & Percantikan Tampilan Input Date (Sangat Berguna di riwayat.html) */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%2364748b" class="bi bi-calendar-event" viewBox="0 0 16 16"><path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1z"/><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/></svg>');
+    cursor: pointer;
+    padding: 2px;
+}
+
+/* 4. Efek Animasi Kustom untuk Status IoT Real-time */
+
+/* Animasi skala dasar agar bisa dipakai silang warna */
+@keyframes pulse-scale {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+/* Efek Glow Hijau (Connected / Aktuator Aktif) */
+@keyframes glow-emerald {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    50% { box-shadow: 0 0 10px 4px rgba(16, 185, 129, 0.2); }
+}
+
+/* Efek Glow Merah (Disconnected / Safety Alert Level Air) */
+@keyframes glow-rose {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.4); }
+    50% { box-shadow: 0 0 10px 4px rgba(244, 63, 94, 0.2); }
+}
+
+/* Implementasi Kelas Gabungan */
+.animate-pulse-emerald {
+    animation: pulse-scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite, glow-emerald 2s infinite;
+}
+
+.animate-pulse-rose {
+    animation: pulse-scale 2s cubic-bezier(0.4, 0, 0.6, 1) infinite, glow-rose 2s infinite;
+}
+
+/* Animasi untuk Efek Aliran Cairan / Loading Statis */
+@keyframes fluid-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.bg-fluid-flow {
+    background: linear-gradient(-45deg, #10b981, #059669, #3b82f6, #2563eb);
+    background-size: 400% 400%;
+    animation: fluid-flow 8s ease infinite;
+}
+
+/* 5. Utility Class Tambahan (Mencegah Teks Pecah Saat Transisi Layout) */
+.truncate-2-lines {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   6. RESPONSIVE SIDEBAR NAVIGATION CONFIGURATION
+   ========================================================================== */
+
+/* Pengaturan Desktop (Layar Lebar) */
+@media (min-width: 1024px) {
+    #sidebar {
+        position: relative !important;
+        top: 0;
+        left: 0;
+        height: 100vh !important;
+        width: 16rem;
+        overflow-y: auto;
+        z-index: 50;
+        visibility: visible !important;
+    }
+
+    /* PERBAIKAN: margin-left: 256px !important pada .main-content
+       DIHAPUS dari sini.
+
+       Penyebab jarak kosong lebar antara sidebar dan konten adalah karena
+       #sidebar sudah "position: relative" dan menjadi bagian dari flexbox
+       (.min-h-screen.flex di index.html). Lebar 256px sidebar itu sendiri
+       SUDAH otomatis mendorong .main-content ke kanan lewat flexbox.
+       Menambahkan margin-left: 256px lagi di .main-content membuat konten
+       terdorong DUA KALI, sehingga muncul celah kosong selebar sidebar
+       di antara menu dan data. */
+}
+
+/* Pengaturan Mobile (Layar Kecil) */
+@media (max-width: 1023px) {
+    #sidebar {
+        position: fixed !important;
+        top: 0;
+        left: -260px !important;
+        height: 100vh !important;
+        width: 16rem;
+        z-index: 100;
+        visibility: hidden;
+        transition: left 0.3s ease-in-out, visibility 0.3s ease-in-out;
+    }
+
+    /* Ketika sidebar aktif (state terbuka) */
+    #sidebar.sidebar-active {
+        left: 0 !important;
+        visibility: visible !important;
+    }
+
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 90;
+    }
+
+    #sidebar.sidebar-active ~ .sidebar-overlay {
+        display: block;
+    }
+}
+
+/* 7. UTILITY TAMBAHAN UNTUK TOMBOL MENU (OVERRIDE SAFETY) */
+#menu-toggle {
+    z-index: 1000 !important;
+    position: relative;
+    cursor: pointer;
+}

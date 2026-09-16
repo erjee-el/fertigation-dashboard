@@ -1,23 +1,25 @@
 /**
  * ==========================================================================
  * CONNECTION.JS - BROKER MQTT CONNECTION MANAGEMENT (PAHO MQTT)
- * Smart Fertigation System - ESP32 (WiFi Direct)
+ * Sinkronisasi data antara USR-N510 (RS485) dengan Web Dashboard
+ * Smart Fertigation System - ESP32 (WiFi+NTP, Fuzzy Sugeno x3, 7-Channel Relay)
  * ==========================================================================
  * BROKER: HiveMQ Public (broker.hivemq.com)
- * TRANSPORT: WebSocket Secure (wss://) pada port 8884 (Wajib untuk HTTPS Vercel)
- * NAMESPACE: irigasi/drip/*
+ * TRANSPORT: WebSocket (ws://) pada port 8000
+ * NAMESPACE: irigasi/drip/* — topik terisolasi untuk menghindari tabrakan
+ *            di broker publik yang dipakai bersama oleh banyak pengguna.
  * ==========================================================================
  */
 
-// CONFIGURATION - HiveMQ Public Broker via WebSocket Secure (WSS)
+// CONFIGURATION - HiveMQ Public Broker via WebSocket
 const MQTT_CONFIG = {
     host: 'broker.hivemq.com',      // HiveMQ Public MQTT Broker
-    port: 8884,                     // Port WSS (8884) — Wajib SSL di Vercel HTTPS
+    port: 8000,                     // Port WebSocket (WS) — browser wajib pakai WS, bukan TCP 1883
     clientId: 'web_client_' + Math.random().toString(16).substr(2, 8),
     topics: {
-        // Topik SUBSCRIBE: menerima telemetri sensor dari ESP32
+        // Topik SUBSCRIBE: menerima telemetri sensor dari ESP32 via USR-N510 (RS485)
         sensorData: 'irigasi/drip/sensor',
-        // Topik PUBLISH: mengirim perintah kontrol/kalibrasi ke ESP32
+        // Topik PUBLISH: mengirim perintah kontrol/kalibrasi ke perangkat
         controlDevice: 'irigasi/drip/kontrol'
     }
 };
@@ -30,7 +32,7 @@ let mqttClient = null;
 function initMQTT() {
     mqttClient = new Paho.MQTT.Client(MQTT_CONFIG.host, MQTT_CONFIG.port, MQTT_CONFIG.clientId);
 
-    // Tempelkan ke global window agar file lain bisa mendeteksi status .isConnected()
+    // Tempelkan ke global window agar main.js bisa mendeteksi status .isConnected()
     window.mqttClient = mqttClient;
 
     // Set callback handlers
@@ -40,14 +42,14 @@ function initMQTT() {
     const connectOptions = {
         onSuccess: onConnectSuccess,
         onFailure: onConnectFailure,
-        useSSL: true,           // Wajib true untuk koneksi WSS di Vercel
-        timeout: 10,            // Timeout 10 detik
-        keepAliveInterval: 60,  // Keep-alive 60 detik
-        cleanSession: true
-        // 'reconnect' dihapus karena tidak didukung oleh paho-mqtt
+        useSSL: false,          // false = ws:// (port 8000). Set true untuk wss:// (port 8884) jika migrasi ke HiveMQ Cloud
+        timeout: 10,            // Timeout koneksi sedikit lebih longgar untuk broker publik
+        keepAliveInterval: 60,  // Keep-alive 60 detik — cukup stabil untuk koneksi jarak jauh
+        cleanSession: true,
+        reconnect: false        // Reconnect ditangani manual via setTimeout di bawah
     };
 
-    console.log("%c[MQTT] Menghubungkan ke HiveMQ Public Broker (wss://" + MQTT_CONFIG.host + ":" + MQTT_CONFIG.port + ")...", "color: #3b82f6; font-weight: bold;");
+    console.log("%c[MQTT] Menghubungkan ke HiveMQ Public Broker (ws://" + MQTT_CONFIG.host + ":" + MQTT_CONFIG.port + ")...", "color: #3b82f6; font-weight: bold;");
     mqttClient.connect(connectOptions);
 }
 
@@ -57,14 +59,14 @@ function initMQTT() {
 function onConnectSuccess() {
     console.log("%c[MQTT] Terhubung ke HiveMQ Public Broker dengan Sukses!", "color: #10b981; font-weight: bold;");
     
-    // Update badge status UI
+    // Gunakan fungsi status badge aman dari global window scope
     if (typeof window.updateStatusBadge === 'function') {
         window.updateStatusBadge(true);
     } else {
         updateStatusBadge(true);
     }
 
-    // Subscribe ke topik data sensor ESP32
+    // Subscribe ke topik data sensor (namespace terisolasi irigasi/drip/sensor)
     mqttClient.subscribe(MQTT_CONFIG.topics.sensorData);
     console.log(`[MQTT] Subscribed ke topik: ${MQTT_CONFIG.topics.sensorData}`);
 }
@@ -73,7 +75,7 @@ function onConnectSuccess() {
  * 3. Callback Jika Gagal Terhubung saat Inisiasi
  */
 function onConnectFailure(error) {
-    console.error("[MQTT] Gagal terhubung ke HiveMQ Broker:", error.errorMessage || error);
+    console.error("[MQTT] Gagal terhubung ke HiveMQ Broker:", error.errorMessage);
     
     if (typeof window.updateStatusBadge === 'function') {
         window.updateStatusBadge(false);
@@ -81,7 +83,7 @@ function onConnectFailure(error) {
         updateStatusBadge(false);
     }
     
-    setTimeout(initMQTT, 5000); // Auto-reconnect manual dalam 5 detik
+    setTimeout(initMQTT, 5000); // Auto-reconnect dalam 5 detik
 }
 
 /**
@@ -97,50 +99,45 @@ function onConnectionLost(responseObject) {
             updateStatusBadge(false);
         }
         
-        setTimeout(initMQTT, 5000); // Auto-reconnect manual dalam 5 detik
+        setTimeout(initMQTT, 5000); // Auto-reconnect dalam 5 detik
     }
 }
 
 /**
- * 5. Callback Ketika Data/Payload Masuk dari ESP32
+ * 5. Callback Ketika Data/Payload Masuk dari USR-N510 via Broker
  */
 function onMessageArrived(message) {
     try {
         const rawPayload = message.payloadString.trim();
 
-        // Validasi format JSON
+        // VALIDASI AMAN: Pastikan string diawali '{' dan diakhiri '}' agar tidak crash akibat data serial terpotong
         if (!rawPayload.startsWith('{') || !rawPayload.endsWith('}')) {
-            console.warn("[MQTT] Mengabaikan data bukan JSON:", rawPayload);
+            console.warn("[MQTT] Mengabaikan data rusak/terpotong dari RS485:", rawPayload);
             return;
         }
 
-        let payload = JSON.parse(rawPayload);
+        const payload = JSON.parse(rawPayload);
         console.log("[MQTT] Data real-time diterima:", payload);
-
-        // EXTRACTION UTILITY: Menangani data bertingkat dari ESP32 (misal payload.sensor1)
-        if (payload.sensor1) {
-            payload = { ...payload, ...payload.sensor1 };
-        }
-
-        // Ambil komponen waktu lokal
+        
+        // Ambil komponen waktu lokal untuk penanda update terakhir
         const now = new Date();
         const timeLabel = now.toTimeString().split(' ')[0]; 
 
-        // 1. UPDATE GRAFIK CHART
+        // 1. KIRIM DATA KE GRAFIK CHART
         if (typeof window.updateLiveChart === 'function') {
             window.updateLiveChart(timeLabel, payload.ph, payload.tds);
         } else if (typeof updateLiveChart === 'function') {
             updateLiveChart(timeLabel, payload.ph, payload.tds);
         }
 
-        // 2. PARSER UTAMA (Teks Nilai Sensor)
+        // 2. KIRIM DATA KE PARSER UTAMA (Teks & Batasan Angka)
         if (typeof window.parseIncomingJSON === 'function') {
             window.parseIncomingJSON(payload);
         } else if (typeof parseIncomingJSON === 'function') {
             parseIncomingJSON(payload);
         }
 
-        // 3. PANEL KONTROL AKTUATOR (Relay / Status Device)
+        // 3. KIRIM DATA KE PANEL KONTROL AKTUATOR (Relay & PWM Pompa Drip)
         if (typeof window.updateActuatorPanel === 'function') {
             window.updateActuatorPanel(payload);
         } else if (typeof updateActuatorPanel === 'function') {
@@ -153,7 +150,12 @@ function onMessageArrived(message) {
 }
 
 /**
- * 6. Fungsi Global Publish Instruksi ke ESP32
+ * 6. Fungsi Global untuk Mengirim Instruksi Balik ke Alat (Kalibrasi / Kontrol)
+ * Disesuaikan agar sinkron dengan panggilan form di main.js
+ * 
+ * CATATAN NAMESPACE: Topik yang diteruskan ke fungsi ini sudah menggunakan
+ * prefix irigasi/drip/ dari masing-masing pemanggil (kalibrasi.html, kontrol.html).
+ * Jika topik kosong/null, fallback ke MQTT_CONFIG.topics.controlDevice.
  */
 function mqttPublish(topic, dataObj) {
     if (!mqttClient || !mqttClient.isConnected()) {
@@ -165,7 +167,7 @@ function mqttPublish(topic, dataObj) {
     const message = new Paho.MQTT.Message(payloadString);
     
     message.destinationName = topic || MQTT_CONFIG.topics.controlDevice;
-    message.qos = 0; // Disamakan QoS 0 dengan ESP32
+    message.qos = 1; // QoS 1 menjamin instruksi kalibrasi sampai ke perangkat minimal sekali
     
     mqttClient.send(message);
     console.log(`[MQTT] Mempublikasikan perintah ke [${message.destinationName}]:`, payloadString);
@@ -173,7 +175,7 @@ function mqttPublish(topic, dataObj) {
 }
 
 /**
- * 7. Utilitas Indikator Status UI (Fallback)
+ * 7. Utilitas Mengubah Warna Indikator Status di Sidebar (Fungsi Lokal/Fallback)
  */
 function updateStatusBadge(isConnected) {
     let badge = document.getElementById('mqtt-status-badge');
@@ -194,10 +196,10 @@ function updateStatusBadge(isConnected) {
     }
 }
 
-// Global scope registration
+// Daftarkan fungsi ke global window scope agar bisa diakses silang antar file .html dan main.js
 window.mqttPublish = mqttPublish;
-window.publishCalibration = mqttPublish;
+window.publishCalibration = mqttPublish; // Alias backward-compatibility jika file lain memanggil nama lama
 window.initMQTT = initMQTT;
 
-// Jalankan otomatis saat DOM siap
+// Jalankan koneksi secara otomatis saat struktur DOM halaman telah siap
 document.addEventListener("DOMContentLoaded", initMQTT);
